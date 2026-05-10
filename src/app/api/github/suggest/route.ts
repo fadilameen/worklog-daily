@@ -82,7 +82,7 @@ export async function GET(request: Request) {
     if (/^Merge (pull request|branch|remote-tracking branch|commit) /i.test(subject)) return
     seenSha.add(sha)
     if (!byRepo.has(repo)) byRepo.set(repo, [])
-    byRepo.get(repo)!.push({ repo, message: subject, sha: sha.slice(0, 7) })
+    byRepo.get(repo)!.push({ repo, message: message.trim(), sha: sha.slice(0, 7) })
   }
 
   // Add commits from search (skip merges via parents.length check)
@@ -183,7 +183,7 @@ export async function GET(request: Request) {
       projectName: m?.projectName ?? '',
       taskId: m?.taskId ?? null,
       taskName: m?.taskName ?? '',
-      description: items.map((c) => `- ${c.message}`).join('\n'),
+      description: items.map((c) => `- ${c.message.split('\n').map((l, i) => i === 0 ? l : `  ${l}`).join('\n')}`).join('\n\n'),
       commits: items.map((c) => c.message),
       isPersonal: false,
     }
