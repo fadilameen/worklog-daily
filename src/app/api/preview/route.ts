@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { buildEmailHtml } from '@/lib/email'
+import { buildEmailHtml, formatEmailDate } from '@/lib/email'
+import { parseEmailList } from '@/lib/utils'
 
 interface TimesheetEntry {
   projectId: number
@@ -23,13 +24,21 @@ export async function POST(request: Request) {
 
   const settings = await prisma.userSettings.findUnique({ where: { userId: session.user.id } })
 
+  const userName = session.user.name || session.user.email || 'User'
+  const subjectName = settings?.displayName || userName
+
   const html = buildEmailHtml({
-    userName: session.user.name || session.user.email || 'User',
+    userName,
     userEmail: session.user.email || '',
     date,
     entries,
     signature: settings?.emailSignature || '',
   })
 
-  return NextResponse.json({ html })
+  const subject = `Daily Work Report_${formatEmailDate(date)}_${subjectName.toUpperCase()}`
+  const to = parseEmailList(settings?.emailRecipients)
+  const cc = parseEmailList(settings?.emailCc)
+  const bcc = parseEmailList(settings?.emailBcc)
+
+  return NextResponse.json({ html, subject, to, cc, bcc })
 }

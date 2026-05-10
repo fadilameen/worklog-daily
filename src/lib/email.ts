@@ -25,7 +25,7 @@ const TH_FIRST = 'border-width:1px;border-style:solid;border-color:rgb(204,204,2
 const TD = 'border-width:1px;border-style:solid;border-color:rgb(204,204,204) rgb(0,0,0) rgb(0,0,0) rgb(204,204,204);overflow:hidden;padding:2px 3px;vertical-align:middle;text-align:center'
 const TD_FIRST = 'border-width:1px;border-style:solid;border-color:rgb(204,204,204) rgb(0,0,0) rgb(0,0,0);overflow:hidden;padding:2px 3px;vertical-align:middle;text-align:center'
 
-function formatEmailDate(isoDate: string): string {
+export function formatEmailDate(isoDate: string): string {
   const [y, m, d] = isoDate.split('-').map(Number)
   const months = ['January','February','March','April','May','June','July','August','September','October','November','December']
   return `${d} ${months[m - 1]} ${y}`

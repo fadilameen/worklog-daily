@@ -351,6 +351,7 @@ export default function DashboardPage() {
 
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewHtml, setPreviewHtml] = useState('')
+  const [previewMeta, setPreviewMeta] = useState<{ subject: string; to: string[]; cc: string[]; bcc: string[] } | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
 
   const openPreview = async () => {
@@ -384,6 +385,7 @@ export default function DashboardPage() {
         setPreviewOpen(false)
       } else {
         setPreviewHtml(data.html)
+        setPreviewMeta({ subject: data.subject, to: data.to || [], cc: data.cc || [], bcc: data.bcc || [] })
       }
     } catch {
       toast.error('Network error')
@@ -751,6 +753,14 @@ export default function DashboardPage() {
               This is what your team will see. {pushOdoo && 'Odoo timesheet entries will also be created.'}
             </DialogDescription>
           </DialogHeader>
+          {previewMeta && !loadingPreview && (
+            <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-xs font-mono space-y-1">
+              <div className="flex gap-2"><span className="text-muted-foreground w-14 shrink-0">Subject</span><span className="text-foreground break-all">{previewMeta.subject}</span></div>
+              <div className="flex gap-2"><span className="text-muted-foreground w-14 shrink-0">To</span><span className="text-foreground">{previewMeta.to.join(', ') || '—'}</span></div>
+              {previewMeta.cc.length > 0 && <div className="flex gap-2"><span className="text-muted-foreground w-14 shrink-0">CC</span><span className="text-foreground">{previewMeta.cc.join(', ')}</span></div>}
+              {previewMeta.bcc.length > 0 && <div className="flex gap-2"><span className="text-muted-foreground w-14 shrink-0">BCC</span><span className="text-foreground">{previewMeta.bcc.join(', ')}</span></div>}
+            </div>
+          )}
           <div className="flex-1 overflow-hidden rounded-md border border-border bg-white">
             {loadingPreview ? (
               <div className="flex h-72 items-center justify-center">
