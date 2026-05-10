@@ -49,11 +49,15 @@ export async function GET(request: Request) {
   const commitData = await commitRes.json()
   console.log('[github/activity] COMMIT STATUS:', commitRes.status)
   console.log('[github/activity] COMMIT RAW RESPONSE:', JSON.stringify(commitData, null, 2))
-  const commits: CommitItem[] = (commitData.items || []).map((c: { repository: { full_name: string }; commit: { message: string }; sha: string }) => ({
-    repo: c.repository.full_name,
-    message: c.commit.message.split('\n')[0],
-    sha: c.sha.slice(0, 7),
-  }))
+  type RawCommit = { repository: { full_name: string }; commit: { message: string }; sha: string; parents?: unknown[] }
+  const commits: CommitItem[] = (commitData.items || [])
+    .filter((c: RawCommit) => !Array.isArray(c.parents) || c.parents.length <= 1)
+    .filter((c: RawCommit) => !/^Merge (pull request|branch|remote-tracking branch|commit) /i.test(c.commit.message.split('\n')[0]))
+    .map((c: RawCommit) => ({
+      repo: c.repository.full_name,
+      message: c.commit.message.split('\n')[0],
+      sha: c.sha.slice(0, 7),
+    }))
 
   const issueQ = `author:${auth.username}+created:${startUtc}..${endUtc}`
   const issueUrl = `https://api.github.com/search/issues?q=${issueQ}&per_page=30`

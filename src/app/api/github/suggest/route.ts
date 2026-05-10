@@ -187,7 +187,7 @@ export async function GET(request: Request) {
         .filter((c) => c.sha !== 'create' && !c.sha.startsWith('pr-') && !c.sha.startsWith('iss-'))
         .map((c) => `- ${c.message.split('\n').map((l, i) => i === 0 ? l : `  ${l}`).join('\n')}`)
         .join('\n\n'),
-      commits: items.map((c) => c.message),
+      commits: items.filter((c) => c.sha !== 'create' && !c.sha.startsWith('pr-') && !c.sha.startsWith('iss-')).map((c) => c.message),
       isPersonal: false,
     }
   })
