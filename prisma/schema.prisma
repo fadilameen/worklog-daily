@@ -42,6 +42,8 @@ model User {
   sessions      Session[]
   settings      UserSettings?
   submissions   Submission[]
+  githubAuth    GithubAuth?
+  repoMappings  RepoMapping[]
 }
 
 model VerificationToken {
@@ -62,12 +64,40 @@ model UserSettings {
   emailRecipients String  @default("")
   emailCc         String  @default("")
   emailBcc        String  @default("")
+  emailSignature  String  @default("")
+  descriptionStyle String @default("")
   emailFrom       String  @default("")
   smtpHost        String  @default("")
   smtpPort        Int     @default(587)
   smtpUser        String  @default("")
   smtpPassword    String  @default("")
   user            User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GithubAuth {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  accessToken String
+  username    String
+  name        String   @default("")
+  emails      String   @default("")
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model RepoMapping {
+  id           String   @id @default(cuid())
+  userId       String
+  repoFullName String
+  projectId    Int
+  projectName  String
+  taskId       Int
+  taskName     String
+  count        Int      @default(1)
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, repoFullName])
 }
 
 model Submission {

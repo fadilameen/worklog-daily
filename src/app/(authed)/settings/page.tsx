@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, XCircle, KeyRound, Mail, Users, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, KeyRound, Mail, Users, Loader2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Textarea } from '@/components/ui/textarea'
 
 interface Settings {
   odooUrl: string
@@ -18,6 +19,8 @@ interface Settings {
   emailRecipients: string
   emailCc: string
   emailBcc: string
+  emailSignature: string
+  descriptionStyle: string
 }
 
 const defaults: Settings = {
@@ -28,6 +31,8 @@ const defaults: Settings = {
   emailRecipients: '',
   emailCc: '',
   emailBcc: '',
+  emailSignature: '',
+  descriptionStyle: '',
 }
 
 export default function SettingsPage() {
@@ -138,6 +143,9 @@ export default function SettingsPage() {
           <TabsTrigger value="recipients" className="gap-2">
             <Users className="h-4 w-4" /> Recipients
           </TabsTrigger>
+          <TabsTrigger value="style" className="gap-2">
+            <Sparkles className="h-4 w-4" /> AI Style
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="odoo" className="mt-6">
@@ -223,10 +231,49 @@ export default function SettingsPage() {
                 <Input value={settings.emailBcc} onChange={(e) => set('emailBcc', e.target.value)} placeholder="bcc@company.com" />
               </Field>
             </div>
+          </Card>
 
-            <div className="mt-6 flex justify-end">
+          <Card>
+            <h2 className="text-lg font-semibold">Email signature</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Paste your HTML signature (or plain text). Leave empty for default.
+            </p>
+            <div className="mt-5">
+              <Textarea
+                value={settings.emailSignature}
+                onChange={(e) => set('emailSignature', e.target.value)}
+                rows={10}
+                placeholder="<div>Your name<br>Your title<br>Company</div>"
+                className="font-mono text-xs resize-y"
+              />
+            </div>
+            <div className="mt-4 flex justify-end">
               <Button onClick={save} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save recipients'}
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+              </Button>
+            </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="style" className="mt-6">
+          <Card>
+            <h2 className="text-lg font-semibold">Your writing style</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Paste an example description in your tone. AI matches its rhythm, technical density,
+              and sentence structure for every generated description.
+            </p>
+            <div className="mt-5">
+              <Textarea
+                value={settings.descriptionStyle}
+                onChange={(e) => set('descriptionStyle', e.target.value)}
+                rows={14}
+                placeholder="Paste a description you wrote that captures your style…"
+                className="resize-y"
+              />
+            </div>
+            <div className="mt-4 flex justify-end">
+              <Button onClick={save} disabled={saving}>
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save style'}
               </Button>
             </div>
           </Card>

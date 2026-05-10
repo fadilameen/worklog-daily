@@ -13,6 +13,13 @@ const STATUS_BG: Record<string, string> = {
   'On-Queue': 'rgb(109,158,235)',
 }
 
+const STATUS_ORDER: Record<string, number> = {
+  'Completed': 0,
+  'On-Hold': 1,
+  'On-Queue': 2,
+  'Ongoing': 3,
+}
+
 const TH = 'border-width:1px;border-style:solid;border-color:rgb(204,204,204) rgb(0,0,0) rgb(0,0,0) rgb(204,204,204);overflow:hidden;padding:2px 3px;vertical-align:middle;background-color:rgb(183,183,183);font-weight:bold;text-align:center'
 const TH_FIRST = 'border-width:1px;border-style:solid;border-color:rgb(204,204,204) rgb(0,0,0) rgb(0,0,0);overflow:hidden;padding:2px 3px;vertical-align:middle;background-color:rgb(183,183,183);font-weight:bold;text-align:center'
 const TD = 'border-width:1px;border-style:solid;border-color:rgb(204,204,204) rgb(0,0,0) rgb(0,0,0) rgb(204,204,204);overflow:hidden;padding:2px 3px;vertical-align:middle;text-align:center'
@@ -29,11 +36,19 @@ export function buildEmailHtml(params: {
   userEmail: string
   date: string
   entries: TimesheetEntry[]
+  signature?: string
 }) {
-  const { userName, userEmail, date, entries } = params
+  const { userName, userEmail, date, entries, signature } = params
   const formattedDate = formatEmailDate(date)
 
-  const rows = entries
+  // Sort: Completed first, Ongoing last
+  const sorted = [...entries].sort((a, b) => {
+    const sa = STATUS_ORDER[a.status || ''] ?? 99
+    const sb = STATUS_ORDER[b.status || ''] ?? 99
+    return sa - sb
+  })
+
+  const rows = sorted
     .map((e, i) => {
       const bg = e.status ? STATUS_BG[e.status] : ''
       const statusTd = bg ? `${TD};background-color:${bg}` : TD
@@ -80,7 +95,9 @@ export function buildEmailHtml(params: {
       </tbody>
     </table>
   </div>
-  <div dir="ltr">
+  ${signature?.trim()
+    ? `<div dir="ltr"><br><br>${signature}</div>`
+    : `<div dir="ltr">
     <p style="color:rgb(34,34,34);font-family:verdana,sans-serif;line-height:1.656;margin-top:0;margin-bottom:0">
       <span style="font-size:10pt;font-family:Verdana;color:rgb(0,0,0)"><br><br><br>Thanks &amp; Regards</span>
     </p>
@@ -95,7 +112,7 @@ export function buildEmailHtml(params: {
         </tr>
       </tbody>
     </table>
-  </div>
+  </div>`}
 </div>`
 }
 
@@ -125,12 +142,13 @@ export async function sendWorkReport(params: {
   bcc?: string[]
   date: string
   entries: TimesheetEntry[]
+  signature?: string
 }) {
-  const { userEmail, userName, recipients, cc = [], bcc = [], date, entries } = params
+  const { userEmail, userName, recipients, cc = [], bcc = [], date, entries, signature } = params
   let { accessToken } = params
 
   const formattedDate = formatEmailDate(date)
-  const html = buildEmailHtml({ userName, userEmail, date, entries })
+  const html = buildEmailHtml({ userName, userEmail, date, entries, signature })
   const subject = `Daily Work Report_${formattedDate}_${userName.toUpperCase()}`
 
   const headers: string[] = [

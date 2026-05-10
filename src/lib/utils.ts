@@ -17,3 +17,10 @@ export function formatDisplayDate(dateStr: string) {
     day: 'numeric',
   })
 }
+
+export function parseEmailList(raw: string | null | undefined): string[] {
+  return (raw ?? '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean)
+}

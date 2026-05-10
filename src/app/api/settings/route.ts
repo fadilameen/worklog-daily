@@ -24,7 +24,8 @@ export async function POST(request: Request) {
     const body = await request.json()
     const allowed = [
       'odooUrl', 'odooUsername', 'odooPassword', 'odooDatabase',
-      'emailRecipients', 'emailCc', 'emailBcc',
+      'emailRecipients', 'emailCc', 'emailBcc', 'emailSignature',
+      'descriptionStyle',
     ]
     const data: Record<string, unknown> = {}
     for (const key of allowed) {
