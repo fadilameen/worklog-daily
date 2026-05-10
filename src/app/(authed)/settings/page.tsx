@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 
 interface Settings {
+  displayName: string
   odooUrl: string
   odooDatabase: string
   odooUsername: string
@@ -25,6 +26,7 @@ interface Settings {
 }
 
 const defaults: Settings = {
+  displayName: '',
   odooUrl: '',
   odooDatabase: '',
   odooUsername: '',
@@ -223,6 +225,16 @@ export default function SettingsPage() {
             <p className="mt-1 text-sm text-muted-foreground">Comma-separated email addresses per role.</p>
 
             <div className="mt-6 space-y-4">
+              <Field label="Display name">
+                <Input
+                  value={settings.displayName}
+                  onChange={(e) => set('displayName', e.target.value)}
+                  placeholder={session?.user?.name || 'Your full name'}
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Used in email subject and signature. Defaults to your Google account name.
+                </p>
+              </Field>
               <Field label="To">
                 <Input value={settings.emailRecipients} onChange={(e) => set('emailRecipients', e.target.value)} placeholder="manager@company.com, team@company.com" />
               </Field>

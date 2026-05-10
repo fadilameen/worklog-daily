@@ -21,7 +21,7 @@ export async function POST(request: Request) {
   const settings = await prisma.userSettings.findUnique({ where: { userId: session.user.id } })
 
   const html = buildWeeklyEmailHtml({
-    userName: session.user.name || session.user.email || 'User',
+    userName: settings?.displayName || session.user.name || session.user.email || 'User',
     userEmail: session.user.email || '',
     weekLabel,
     entries,

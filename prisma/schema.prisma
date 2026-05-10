@@ -67,6 +67,7 @@ model UserSettings {
   emailSignature  String  @default("")
   descriptionStyle String @default("")
   weeklyFilterTo  String  @default("")
+  displayName     String  @default("")
   emailFrom       String  @default("")
   smtpHost        String  @default("")
   smtpPort        Int     @default(587)
