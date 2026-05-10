@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
 import { Combobox } from '@/components/ui/combobox'
+import { DatePicker } from '@/components/ui/date-picker'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +30,7 @@ import {
 } from '@/components/ui/dialog'
 import { Eye } from 'lucide-react'
 import { GithubIcon } from '@/components/icons'
+import { STATUSES, STATUS_BG, STATUS_FG } from '@/lib/status'
 import { formatDate, cn } from '@/lib/utils'
 
 type Suggestion = {
@@ -46,22 +48,6 @@ type Suggestion = {
 interface OdooRecord {
   id: number
   name: string
-}
-
-const STATUSES = ['Ongoing', 'Completed', 'On-Hold', 'On-Queue'] as const
-
-const STATUS_BG: Record<string, string> = {
-  Completed: 'rgb(106,168,79)',
-  Ongoing: 'rgb(255,217,102)',
-  'On-Hold': 'rgb(224,102,102)',
-  'On-Queue': 'rgb(109,158,235)',
-}
-
-const STATUS_FG: Record<string, string> = {
-  Completed: '#0a1f06',
-  Ongoing: '#3a2a00',
-  'On-Hold': '#3a0606',
-  'On-Queue': '#0a1530',
 }
 
 interface TimesheetEntry {
@@ -425,12 +411,7 @@ export default function DashboardPage() {
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Log work</h1>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-44"
-          />
+          <DatePicker value={date} onChange={setDate} className="w-52" />
           <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
             <CalendarDays className="h-4 w-4" />
             <span className="font-mono">{totalHours.toFixed(2)}h</span>

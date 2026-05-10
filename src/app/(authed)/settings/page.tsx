@@ -21,6 +21,7 @@ interface Settings {
   emailBcc: string
   emailSignature: string
   descriptionStyle: string
+  weeklyFilterTo: string
 }
 
 const defaults: Settings = {
@@ -33,6 +34,7 @@ const defaults: Settings = {
   emailBcc: '',
   emailSignature: '',
   descriptionStyle: '',
+  weeklyFilterTo: '',
 }
 
 export default function SettingsPage() {
@@ -229,6 +231,16 @@ export default function SettingsPage() {
               </Field>
               <Field label="BCC">
                 <Input value={settings.emailBcc} onChange={(e) => set('emailBcc', e.target.value)} placeholder="bcc@company.com" />
+              </Field>
+              <Field label="Weekly filter — fetch reports sent to">
+                <Input
+                  value={settings.weeklyFilterTo}
+                  onChange={(e) => set('weeklyFilterTo', e.target.value)}
+                  placeholder="manager@company.com"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1">
+                  Weekly report scans Gmail for daily reports sent to this address.
+                </p>
               </Field>
             </div>
           </Card>

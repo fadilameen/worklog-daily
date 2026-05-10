@@ -4,9 +4,8 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CalendarRange, Loader2, Eye, Send, Sparkles } from 'lucide-react'
+import { CalendarRange, Loader2, Eye, Send, Sparkles, Wand2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
@@ -18,50 +17,52 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { DatePicker } from '@/components/ui/date-picker'
+import { STATUSES, STATUS_BG, STATUS_FG } from '@/lib/status'
 import { cn } from '@/lib/utils'
 
-interface WeeklyEntry {
-  projectId?: number
+interface RawRow {
+  date: string
   projectName: string
-  taskId?: number
+  taskName: string
+  status: string
+  description: string
+}
+
+interface ConciseEntry {
+  projectName: string
   taskName: string
   status: string
   description: string
   perDay?: Array<{ date: string; status: string; description: string }>
 }
 
-const STATUSES = ['Ongoing', 'Completed', 'On-Hold', 'On-Queue'] as const
-
-const STATUS_BG: Record<string, string> = {
-  Completed: 'rgb(106,168,79)',
-  Ongoing: 'rgb(255,217,102)',
-  'On-Hold': 'rgb(224,102,102)',
-  'On-Queue': 'rgb(109,158,235)',
-}
-const STATUS_FG: Record<string, string> = {
-  Completed: '#0a1f06',
-  Ongoing: '#3a2a00',
-  'On-Hold': '#3a0606',
-  'On-Queue': '#0a1530',
-}
 
 function mondayOfToday(): string {
   const d = new Date()
   const day = d.getDay() || 7
   d.setDate(d.getDate() - (day - 1))
-  return d.toISOString().split('T')[0]
+  const y = d.getFullYear()
+  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dd}`
 }
+
+type Stage = 'idle' | 'raw' | 'concise'
 
 export default function WeeklyPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const [date, setDate] = useState(mondayOfToday())
+  const [stage, setStage] = useState<Stage>('idle')
   const [loading, setLoading] = useState(false)
+  const [conciseLoading, setConciseLoading] = useState(false)
   const [weekLabel, setWeekLabel] = useState('')
   const [monday, setMonday] = useState('')
   const [friday, setFriday] = useState('')
-  const [entries, setEntries] = useState<WeeklyEntry[]>([])
-  const [empty, setEmpty] = useState(false)
+  const [rawRows, setRawRows] = useState<RawRow[]>([])
+  const [usedDates, setUsedDates] = useState<string[]>([])
+  const [entries, setEntries] = useState<ConciseEntry[]>([])
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewHtml, setPreviewHtml] = useState('')
   const [loadingPreview, setLoadingPreview] = useState(false)
@@ -71,12 +72,13 @@ export default function WeeklyPage() {
     if (status === 'unauthenticated') router.push('/')
   }, [status, router])
 
-  const generate = async () => {
+  const fetchRaw = async () => {
     setLoading(true)
+    setStage('idle')
+    setRawRows([])
     setEntries([])
-    setEmpty(false)
     try {
-      const res = await fetch('/api/weekly/preview', {
+      const res = await fetch('/api/weekly/raw', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ date }),
@@ -89,10 +91,11 @@ export default function WeeklyPage() {
       setWeekLabel(data.weekLabel)
       setMonday(data.monday)
       setFriday(data.friday)
-      setEntries(data.entries)
-      setEmpty(!!data.empty)
-      if (data.empty) toast.error('No submissions found for this week')
-      else toast.success(`${data.entries.length} entries grouped for ${data.weekLabel}`)
+      setRawRows(data.rows)
+      setUsedDates(data.usedDates || [])
+      setStage('raw')
+      if (data.empty) toast.error('No reports found for this week')
+      else toast.success(`${data.rows.length} rows from ${(data.usedDates || []).length} day(s)`)
     } catch {
       toast.error('Network error')
     } finally {
@@ -100,13 +103,36 @@ export default function WeeklyPage() {
     }
   }
 
-  const updateEntry = (idx: number, patch: Partial<WeeklyEntry>) => {
+  const makeConcise = async () => {
+    setConciseLoading(true)
+    try {
+      const res = await fetch('/api/weekly/concise', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rows: rawRows }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || 'Concise failed')
+        return
+      }
+      setEntries(data.entries)
+      setStage('concise')
+      toast.success(`Concised into ${data.entries.length} entries`)
+    } catch {
+      toast.error('Network error')
+    } finally {
+      setConciseLoading(false)
+    }
+  }
+
+  const updateEntry = (idx: number, patch: Partial<ConciseEntry>) => {
     setEntries((prev) => prev.map((e, i) => (i === idx ? { ...e, ...patch } : e)))
   }
 
   const openPreview = async () => {
     if (!entries.length) {
-      toast.error('Generate the week first')
+      toast.error('Concise the rows first')
       return
     }
     setLoadingPreview(true)
@@ -121,9 +147,7 @@ export default function WeeklyPage() {
       if (!res.ok) {
         toast.error(data.error || 'Preview failed')
         setPreviewOpen(false)
-      } else {
-        setPreviewHtml(data.html)
-      }
+      } else setPreviewHtml(data.html)
     } finally {
       setLoadingPreview(false)
     }
@@ -159,29 +183,24 @@ export default function WeeklyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10 lg:px-10 lg:py-14">
+    <div className="mx-auto max-w-5xl px-6 py-10 lg:px-10 lg:py-14">
       <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Weekly</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Weekly report</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pick any date in the week. Daily entries Mon–Fri get grouped per task.
+            Pick a date in the target week. Fetches daily reports Mon-Fri from Gmail.
           </p>
         </div>
         <div className="flex items-center gap-3 flex-wrap">
-          <Input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="w-44"
-          />
+          <DatePicker value={date} onChange={setDate} className="w-52" highlightWeek />
           <Button
-            onClick={generate}
+            onClick={fetchRaw}
             disabled={loading}
             className="gap-2 bg-accent text-accent-foreground hover:opacity-90"
           >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            {loading ? 'Generating…' : 'Generate week'}
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wand2 className="h-4 w-4" />}
+            {loading ? 'Fetching…' : 'Fetch week'}
           </Button>
         </div>
       </header>
@@ -195,13 +214,76 @@ export default function WeeklyPage() {
         </div>
       )}
 
-      {empty && (
-        <div className="mt-10 rounded-xl border border-dashed border-border bg-surface/40 p-12 text-center text-sm text-muted-foreground">
-          No submissions found between {monday} and {friday}.
-        </div>
+      {/* Stage: raw rows */}
+      {stage === 'raw' && (
+        <>
+          {rawRows.length === 0 ? (
+            <div className="mt-10 rounded-xl border border-dashed border-border bg-surface/40 p-12 text-center text-sm text-muted-foreground">
+              No daily reports found in Gmail for {monday} → {friday}.
+            </div>
+          ) : (
+            <>
+              <div className="mt-8 overflow-hidden rounded-xl border border-border bg-surface/40">
+                <div className="flex items-center justify-between border-b border-border bg-surface/60 px-5 py-2.5">
+                  <span className="font-mono text-[11px] uppercase tracking-[0.2em] text-muted-foreground">
+                    Raw rows from {rawRows.length} entries
+                  </span>
+                  <Badge variant="outline" className="font-mono text-[10px] uppercase">
+                    {usedDates.length} days
+                  </Badge>
+                </div>
+                <table className="w-full text-sm">
+                  <thead className="bg-surface/40">
+                    <tr className="border-b border-border">
+                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Date</th>
+                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Project</th>
+                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Task</th>
+                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Status</th>
+                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rawRows.map((r, i) => (
+                      <tr key={i} className="border-b border-border/50 last:border-0">
+                        <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">{r.date}</td>
+                        <td className="px-4 py-2.5 text-xs">{r.projectName}</td>
+                        <td className="px-4 py-2.5 text-xs">{r.taskName}</td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className="inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold"
+                            style={{
+                              backgroundColor: STATUS_BG[r.status] || 'transparent',
+                              color: STATUS_FG[r.status] || 'inherit',
+                            }}
+                          >
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-6">
+                <Button
+                  onClick={makeConcise}
+                  disabled={conciseLoading}
+                  size="lg"
+                  className="w-full gap-2 bg-accent text-accent-foreground hover:opacity-90"
+                >
+                  {conciseLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                  {conciseLoading ? 'Concising…' : 'Concise (group + AI summarize)'}
+                </Button>
+              </div>
+            </>
+          )}
+        </>
       )}
 
-      {entries.length > 0 && (
+      {/* Stage: concise grouped */}
+      {stage === 'concise' && entries.length > 0 && (
         <>
           <div className="mt-8 space-y-4">
             {entries.map((entry, idx) => (
@@ -288,9 +370,7 @@ export default function WeeklyPage() {
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>Weekly email preview · {weekLabel}</DialogTitle>
-            <DialogDescription>
-              Sent to recipients configured in Settings.
-            </DialogDescription>
+            <DialogDescription>Sent to recipients configured in Settings.</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-hidden rounded-md border border-border bg-white">
             {loadingPreview ? (
@@ -307,9 +387,7 @@ export default function WeeklyPage() {
             )}
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setPreviewOpen(false)}>
-              Cancel
-            </Button>
+            <Button variant="outline" onClick={() => setPreviewOpen(false)}>Cancel</Button>
             <Button
               onClick={send}
               disabled={sending || loadingPreview}

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { buildStyleBlock } from '@/lib/utils'
 
 interface CommitItem {
   message: string
@@ -81,14 +82,7 @@ export async function POST(request: Request) {
   const taskName = mapping?.taskName ?? ''
   const isPersonal = false
 
-  // Lookup user's global writing style
-  let styleBlock = ''
-  try {
-    const userStyle = settings?.descriptionStyle
-    if (userStyle?.trim()) {
-      styleBlock = `\n\nMATCH THIS EXAMPLE'S STYLE EXACTLY:\n"""\n${userStyle}\n"""`
-    }
-  } catch { /* skip */ }
+  const styleBlock = buildStyleBlock(settings?.descriptionStyle)
 
   // Generate professional description from commits
   const descPrompt = `Summarize the functional outcomes of the day's work as a polished changelog paragraph.

@@ -45,7 +45,7 @@ export function Sidebar() {
   }
 
   return (
-    <aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar p-4 md:flex">
+    <aside className="hidden md:flex sticky top-0 h-screen w-60 shrink-0 flex-col border-r border-border bg-sidebar p-4 overflow-y-auto">
       <div className="mb-8 flex items-center justify-between">
         <Link href="/dashboard" className="flex items-center gap-2">
           <div className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-foreground font-mono text-sm font-bold">

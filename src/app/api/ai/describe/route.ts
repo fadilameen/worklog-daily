@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { buildStyleBlock } from '@/lib/utils'
 
 interface CommitItem { repo: string; message: string }
 interface IssueItem { type: 'pr' | 'issue'; repo: string; number: number; title: string }
@@ -19,9 +20,7 @@ export async function POST(request: Request) {
       where: { userId: session.user.id },
       select: { descriptionStyle: true },
     })
-    if (settings?.descriptionStyle?.trim()) {
-      styleBlock = `\n\nMATCH THIS EXAMPLE'S STYLE EXACTLY:\n"""\n${settings.descriptionStyle}\n"""`
-    }
+    styleBlock = buildStyleBlock(settings?.descriptionStyle)
   } catch { /* skip */ }
 
   let githubBlock = ''
