@@ -2,11 +2,15 @@
 
 import { signIn, useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
+import { Loader2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 
 export default function LoginPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
+  const [busy, setBusy] = useState(false)
 
   useEffect(() => {
     if (session) router.push('/dashboard')
@@ -14,69 +18,105 @@ export default function LoginPage() {
 
   if (status === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
-        <div className="w-5 h-5 border-2 border-violet-600 border-t-transparent rounded-full animate-spin" />
+      <div className="flex min-h-screen items-center justify-center">
+        <Loader2 className="h-5 w-5 animate-spin text-accent" />
       </div>
     )
   }
 
+  const handleGoogle = () => {
+    setBusy(true)
+    signIn('google', { callbackUrl: '/dashboard' })
+  }
+
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center bg-white dark:bg-slate-950 relative overflow-hidden"
-      style={{
-        backgroundImage: `radial-gradient(circle, #e2e8f0 1px, transparent 1px)`,
-        backgroundSize: '28px 28px',
-      }}
-    >
-      {/* Subtle gradient overlay on the dot grid */}
-      <div
-        className="absolute inset-0 pointer-events-none"
-        style={{
-          background:
-            'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(255,255,255,0.92) 0%, rgba(255,255,255,0.6) 60%, transparent 100%)',
-        }}
-      />
-
-      {/* Card */}
-      <div className="relative z-10 w-full max-w-sm mx-4">
-        {/* Logo */}
-        <div className="flex flex-col items-center mb-10">
-          <div className="w-12 h-12 bg-violet-600 rounded-lg flex items-center justify-center mb-4 shadow-sm">
-            <span
-              className="text-white font-bold text-lg tracking-tight select-none"
-              style={{ fontFamily: 'var(--font-dm-mono, monospace)' }}
-            >
-              WL
-            </span>
+    <div className="relative grid min-h-screen lg:grid-cols-2">
+      {/* Left: brand */}
+      <div className="hidden flex-col justify-between p-12 lg:flex">
+        <div className="flex items-center gap-2">
+          <div className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-foreground font-mono text-sm font-bold">
+            W
           </div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white tracking-tight">WorkLog</h1>
-          <p className="text-slate-400 dark:text-slate-400 text-sm mt-1.5 text-center leading-snug">
-            Your daily work, logged in one shot.
+          <span className="font-semibold tracking-tight">WorkLog</span>
+        </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6, ease: 'easeOut' }}
+          className="space-y-6"
+        >
+          <p className="font-mono text-xs uppercase tracking-[0.25em] text-muted-foreground">
+            log once · sync everywhere
           </p>
-        </div>
+          <h1 className="text-5xl font-semibold leading-[1.05] tracking-tight">
+            Fill one form.
+            <br />
+            <span className="text-muted-foreground">Hit submit.</span>
+            <br />
+            <span className="text-accent">Done for the day.</span>
+          </h1>
+          <p className="max-w-md text-sm leading-relaxed text-muted-foreground">
+            Your daily entries push to Odoo timesheets and email your team —
+            from the same form, at the same time.
+          </p>
+        </motion.div>
 
-        {/* Sign-in card */}
-        <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm p-8">
-          <button
-            onClick={() => signIn('google', { callbackUrl: '/dashboard' })}
-            className="w-full flex items-center justify-center gap-3 px-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 hover:border-slate-300 transition-all duration-150 shadow-sm"
+        <p className="font-mono text-xs text-muted-foreground">© WorkLog</p>
+      </div>
+
+      {/* Right: form */}
+      <div className="flex items-center justify-center p-6 lg:p-12">
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4 }}
+          className="w-full max-w-sm space-y-6"
+        >
+          <div className="lg:hidden flex items-center gap-2">
+            <div className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-foreground font-mono text-sm font-bold">
+              W
+            </div>
+            <span className="font-semibold tracking-tight">WorkLog</span>
+          </div>
+
+          <div>
+            <h2 className="text-2xl font-semibold tracking-tight">Welcome</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Sign in with your Google account to log today&rsquo;s work.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleGoogle}
+            disabled={busy}
+            variant="outline"
+            className="w-full justify-center gap-2 border-border bg-surface hover:bg-surface-2"
           >
-            {/* Google icon */}
-            <svg className="w-4.5 h-4.5" width="18" height="18" viewBox="0 0 24 24">
-              <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-              <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-              <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-              <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-            </svg>
+            {busy ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <GoogleIcon />
+            )}
             Continue with Google
-          </button>
-        </div>
+          </Button>
 
-        {/* Footer */}
-        <p className="text-center text-slate-400 dark:text-slate-600 text-xs mt-6">
-          Used by your team · Built for Odoo
-        </p>
+          <p className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground text-center">
+            For team use · Built for Odoo
+          </p>
+        </motion.div>
       </div>
     </div>
+  )
+}
+
+function GoogleIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="h-4 w-4">
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.9h5.5c-.2 1.4-1.6 4.2-5.5 4.2-3.3 0-6-2.7-6-6.1s2.7-6.1 6-6.1c1.9 0 3.2.8 3.9 1.5l2.6-2.6C16.9 3.5 14.7 2.6 12 2.6c-5.2 0-9.4 4.2-9.4 9.4s4.2 9.4 9.4 9.4c5.4 0 9-3.8 9-9.2 0-.6-.1-1.1-.2-1.6H12z"
+      />
+    </svg>
   )
 }

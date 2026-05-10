@@ -1,75 +1,124 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-@variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:is(.dark *));
 
-/* Override Tailwind v4 violet → classic indigo palette */
-@theme {
-  --color-violet-50:  #eef2ff;
-  --color-violet-100: #e0e7ff;
-  --color-violet-200: #c7d2fe;
-  --color-violet-300: #a5b4fc;
-  --color-violet-400: #818cf8;
-  --color-violet-500: #6366f1;
-  --color-violet-600: #4f46e5;
-  --color-violet-700: #4338ca;
-  --color-violet-800: #3730a3;
-  --color-violet-900: #312e81;
+@theme inline {
+  --font-sans: var(--font-inter-tight), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, monospace;
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-ring-offset-background: var(--background);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --shadow-glow: 0 0 0 1px color-mix(in oklab, var(--accent) 30%, transparent),
+                 0 8px 30px -8px color-mix(in oklab, var(--accent) 35%, transparent);
 }
 
 :root {
-  color-scheme: light;
-  --background: #ffffff;
-  --foreground: #0f172a;
+  --radius: 0.625rem;
+  --background: oklch(0.16 0.005 260);
+  --foreground: oklch(0.96 0.005 260);
+  --surface: oklch(0.20 0.005 260);
+  --surface-2: oklch(0.235 0.006 260);
+  --card: oklch(0.205 0.006 260);
+  --card-foreground: oklch(0.96 0.005 260);
+  --popover: oklch(0.21 0.006 260);
+  --popover-foreground: oklch(0.96 0.005 260);
+  --primary: oklch(0.96 0.005 260);
+  --primary-foreground: oklch(0.16 0.005 260);
+  --secondary: oklch(0.27 0.008 260);
+  --secondary-foreground: oklch(0.96 0.005 260);
+  --muted: oklch(0.24 0.006 260);
+  --muted-foreground: oklch(0.66 0.012 260);
+  --accent: oklch(0.86 0.21 130);
+  --accent-foreground: oklch(0.16 0.04 130);
+  --destructive: oklch(0.66 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 260);
+  --success: oklch(0.78 0.18 150);
+  --success-foreground: oklch(0.16 0.05 150);
+  --warning: oklch(0.82 0.18 75);
+  --warning-foreground: oklch(0.16 0.05 75);
+  --border: oklch(1 0 0 / 0.08);
+  --input: oklch(1 0 0 / 0.10);
+  --ring: oklch(0.86 0.21 130 / 0.6);
+
+  --sidebar: oklch(0.18 0.005 260);
+  --sidebar-foreground: oklch(0.92 0.006 260);
+  --sidebar-primary: oklch(0.86 0.21 130);
+  --sidebar-primary-foreground: oklch(0.16 0.04 130);
+  --sidebar-accent: oklch(0.24 0.006 260);
+  --sidebar-accent-foreground: oklch(0.96 0.005 260);
+  --sidebar-border: oklch(1 0 0 / 0.06);
+  --sidebar-ring: oklch(0.86 0.21 130 / 0.6);
 }
 
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
+html, body {
+  color-scheme: dark;
 }
 
-html {
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@layer base {
+  * { border-color: var(--color-border); }
+  html { font-family: var(--font-sans); }
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-feature-settings: "ss01", "cv11";
+    -webkit-font-smoothing: antialiased;
+    background-image:
+      radial-gradient(1200px 600px at 80% -10%, color-mix(in oklab, var(--accent) 10%, transparent), transparent 60%),
+      radial-gradient(900px 500px at -10% 110%, color-mix(in oklab, var(--accent) 6%, transparent), transparent 60%);
+    background-attachment: fixed;
+  }
+  .font-mono { font-family: var(--font-mono); }
+
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-thumb { background: color-mix(in oklab, var(--foreground) 12%, transparent); border-radius: 999px; }
+  ::-webkit-scrollbar-track { background: transparent; }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  min-height: 100vh;
-  font-family: var(--font-dm-sans, system-ui, sans-serif);
-}
-
-.dark body {
-  background-color: #0f172a;
-  color: #e2e8f0;
-}
-
-/* Keyboard focus only — no conflict with Tailwind ring utilities */
-:focus-visible:not(input):not(select):not(textarea):not(button) {
-  outline: 2px solid #4f46e5;
-  outline-offset: 2px;
-}
-
-/* Select chevron */
-select {
-  appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  padding-right: 32px !important;
-}
-
-/* Disabled form elements — override browser UA stylesheet */
-input:disabled,
-select:disabled,
-textarea:disabled {
-  background-color: #f8fafc !important;
-  color: #94a3b8 !important;
-  cursor: not-allowed;
-  opacity: 1;
-}
-
-select:disabled {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23cbd5e1' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+@layer utilities {
+  .glass {
+    background: color-mix(in oklab, var(--surface) 80%, transparent);
+    backdrop-filter: blur(10px);
+    border: 1px solid var(--color-border);
+  }
+  .ring-accent-glow { box-shadow: var(--shadow-glow); }
 }

@@ -1,34 +1,31 @@
 import type { Metadata } from 'next'
-import { DM_Sans, DM_Mono } from 'next/font/google'
+import { Inter_Tight, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
 
-const dmSans = DM_Sans({
+const interTight = Inter_Tight({
   subsets: ['latin'],
-  variable: '--font-dm-sans',
+  variable: '--font-inter-tight',
   weight: ['400', '500', '600', '700'],
   display: 'swap',
 })
 
-const dmMono = DM_Mono({
+const jetbrainsMono = JetBrains_Mono({
   subsets: ['latin'],
-  variable: '--font-dm-mono',
+  variable: '--font-jetbrains-mono',
   weight: ['400', '500'],
   display: 'swap',
 })
 
 export const metadata: Metadata = {
-  title: 'WorkLog – Daily Timesheet & Reports',
-  description: 'Submit daily work reports to Odoo and email in one click',
+  title: 'WorkLog — log once, sync everywhere',
+  description: 'Fill one form. Push timesheet to Odoo and email a daily report — at the same time.',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="en"
-      className={`${dmSans.variable} ${dmMono.variable}`}
-    >
-      <body className="min-h-screen antialiased" style={{ fontFamily: 'var(--font-dm-sans), system-ui, sans-serif' }}>
+    <html lang="en" className={`dark ${interTight.variable} ${jetbrainsMono.variable}`}>
+      <body className="min-h-screen antialiased">
         <Providers>{children}</Providers>
       </body>
     </html>
