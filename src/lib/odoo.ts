@@ -90,9 +90,11 @@ export async function createTimesheetEntry(
     date: string
     hours: number
     description: string
+    status?: string
   }
 ): Promise<number> {
   const uid = await odooLogin(config)
+  const odooStatus = entry.status === 'Completed' ? 'completed' : 'ongoing'
   const id = await executeKw(config, uid, 'account.analytic.line', 'create', [
     {
       project_id: entry.projectId,
@@ -100,6 +102,7 @@ export async function createTimesheetEntry(
       date: entry.date,
       unit_amount: entry.hours,
       name: entry.description,
+      status: odooStatus,
     },
   ])
   return id as number

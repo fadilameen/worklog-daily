@@ -66,6 +66,7 @@ export async function POST(request: Request) {
           date,
           hours: entry.hours,
           description: entry.description,
+          status: entry.status,
         })
           .then((id) => ({ ok: true as const, id }))
           .catch((e: unknown) => ({ ok: false as const, msg: (e as Error).message }))
