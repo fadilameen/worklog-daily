@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { istDayUtcRange } from '@/lib/utils'
 
 interface CommitItem {
   repo: string
@@ -33,14 +34,13 @@ export async function GET(request: Request) {
     Accept: 'application/vnd.github+json',
   }
 
-  // Day window in UTC (rough but ok)
-  const since = `${date}T00:00:00Z`
-  const until = `${date}T23:59:59Z`
+  const { startUtc, endUtc } = istDayUtcRange(date)
+  const since = startUtc
+  const until = endUtc
 
-  console.log('[github/activity] user:', auth.username, '| date:', date)
+  console.log('[github/activity] user:', auth.username, '| date:', date, '| utc range:', startUtc, '..', endUtc)
 
-  // Search commits authored by user on date
-  const commitQ = `author:${auth.username}+author-date:${date}`
+  const commitQ = `author:${auth.username}+author-date:${startUtc}..${endUtc}`
   const commitUrl = `https://api.github.com/search/commits?q=${commitQ}&per_page=30`
   console.log('[github/activity] COMMIT REQUEST:', commitUrl)
   const commitRes = await fetch(commitUrl, {
@@ -55,8 +55,7 @@ export async function GET(request: Request) {
     sha: c.sha.slice(0, 7),
   }))
 
-  // PRs/issues by user on date
-  const issueQ = `author:${auth.username}+created:${date}`
+  const issueQ = `author:${auth.username}+created:${startUtc}..${endUtc}`
   const issueUrl = `https://api.github.com/search/issues?q=${issueQ}&per_page=30`
   console.log('[github/activity] ISSUE REQUEST:', issueUrl)
   const issueRes = await fetch(issueUrl, { headers })

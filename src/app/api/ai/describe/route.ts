@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { buildStyleBlock } from '@/lib/utils'
+import { buildStyleBlock, istDayUtcRange } from '@/lib/utils'
 
 interface CommitItem { repo: string; message: string }
 interface IssueItem { type: 'pr' | 'issue'; repo: string; number: number; title: string }
@@ -31,7 +31,8 @@ export async function POST(request: Request) {
         console.log('[ai/describe] github user:', auth.username, '| date:', date)
         const headers = { Authorization: `Bearer ${auth.accessToken}`, Accept: 'application/vnd.github+json' }
 
-        const commitUrl = `https://api.github.com/search/commits?q=author:${auth.username}+author-date:${date}&per_page=20`
+        const { startUtc: aStart, endUtc: aEnd } = istDayUtcRange(date)
+        const commitUrl = `https://api.github.com/search/commits?q=author:${auth.username}+author-date:${aStart}..${aEnd}&per_page=20`
         console.log('[ai/describe] COMMIT REQUEST:', commitUrl)
         const commitRes = await fetch(commitUrl, {
           headers: { ...headers, Accept: 'application/vnd.github.cloak-preview+json' },
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
           message: c.commit.message.split('\n')[0],
         }))
 
-        const issueUrl = `https://api.github.com/search/issues?q=author:${auth.username}+created:${date}&per_page=20`
+        const issueUrl = `https://api.github.com/search/issues?q=author:${auth.username}+created:${aStart}..${aEnd}&per_page=20`
         console.log('[ai/describe] ISSUE REQUEST:', issueUrl)
         const issueRes = await fetch(issueUrl, { headers })
         const issueData = await issueRes.json()

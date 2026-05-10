@@ -656,7 +656,7 @@ export default function DashboardPage() {
                     onChange={(e) => updateEntry(entry.id, { aiHint: e.target.value })}
                     placeholder="Hint for AI (optional)…"
                     rows={1}
-                    className="flex-1 text-xs resize-none py-2 min-h-9 [field-sizing:content] max-h-32"
+                    className="flex-1 text-xs resize-none py-2 min-h-9 [field-sizing:content] max-h-48"
                   />
                   <Button
                     onClick={() => generateDescription(entry.id)}

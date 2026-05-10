@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { buildStyleBlock } from '@/lib/utils'
+import { buildStyleBlock, istDayUtcRange } from '@/lib/utils'
 
 interface CommitItem {
   message: string
@@ -53,7 +53,8 @@ export async function POST(request: Request) {
     Authorization: `Bearer ${auth.accessToken}`,
     Accept: 'application/vnd.github.cloak-preview+json',
   }
-  const commitUrl = `https://api.github.com/search/commits?q=author:${auth.username}+author-date:${date}+repo:${repo}&per_page=50`
+  const { startUtc, endUtc } = istDayUtcRange(date)
+  const commitUrl = `https://api.github.com/search/commits?q=author:${auth.username}+author-date:${startUtc}..${endUtc}+repo:${repo}&per_page=50`
   console.log('[github/match] COMMIT REQUEST:', commitUrl)
   const res = await fetch(commitUrl, { headers })
   const data = await res.json()

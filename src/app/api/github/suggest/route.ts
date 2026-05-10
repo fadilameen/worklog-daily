@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
+import { istDayUtcRange, utcInstantToIstDate } from '@/lib/utils'
 
 interface CommitItem {
   repo: string
@@ -41,7 +42,8 @@ export async function GET(request: Request) {
   }
 
   // Source 1: search/commits (authored commits, may miss private/recent)
-  const searchUrl = `https://api.github.com/search/commits?q=author:${auth.username}+author-date:${date}&per_page=100`
+  const { startUtc, endUtc } = istDayUtcRange(date)
+  const searchUrl = `https://api.github.com/search/commits?q=author:${auth.username}+author-date:${startUtc}..${endUtc}&per_page=100`
   console.log('[github/suggest] SEARCH REQUEST:', searchUrl)
 
   // Source 2: public events (push, create, PR, issue events)
@@ -80,7 +82,7 @@ export async function GET(request: Request) {
     if (/^Merge (pull request|branch|remote-tracking branch|commit) /i.test(subject)) return
     seenSha.add(sha)
     if (!byRepo.has(repo)) byRepo.set(repo, [])
-    byRepo.get(repo)!.push({ repo, message, sha: sha.slice(0, 7) })
+    byRepo.get(repo)!.push({ repo, message: subject, sha: sha.slice(0, 7) })
   }
 
   // Add commits from search (skip merges via parents.length check)
@@ -103,7 +105,7 @@ export async function GET(request: Request) {
   const seenEventKey = new Set<string>()
   for (const evRaw of allEvents) {
     const ev = evRaw as Event
-    if (!ev.created_at?.startsWith(date)) continue
+    if (utcInstantToIstDate(ev.created_at) !== date) continue
     const dedupKey = `${ev.type}:${ev.repo.name}:${ev.created_at}`
     if (seenEventKey.has(dedupKey)) continue
     seenEventKey.add(dedupKey)
