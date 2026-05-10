@@ -185,3 +185,139 @@ export async function sendWorkReport(params: {
     throw new Error(err?.error?.message || `Gmail API error ${res.status}`)
   }
 }
+
+interface WeeklyEntry {
+  projectName: string
+  taskName: string
+  status: string
+  description: string
+}
+
+export function buildWeeklyEmailHtml(params: {
+  userName: string
+  userEmail: string
+  weekLabel: string // e.g. "W18 2026"
+  entries: WeeklyEntry[]
+  signature?: string
+}) {
+  const { userName, userEmail, weekLabel, entries, signature } = params
+
+  const sorted = [...entries].sort((a, b) => {
+    const sa = STATUS_ORDER[a.status || ''] ?? 99
+    const sb = STATUS_ORDER[b.status || ''] ?? 99
+    return sa - sb
+  })
+
+  const rows = sorted
+    .map((e, i) => {
+      const bg = STATUS_BG[e.status] || ''
+      const statusTd = bg ? `${TD};background-color:${bg}` : TD
+      return `
+        <tr style="height:21px">
+          <td style="${TD_FIRST}">${i + 1}</td>
+          <td style="${TD}">${e.projectName}</td>
+          <td style="${TD}">${e.taskName}</td>
+          <td style="${statusTd}">${e.status || ''}</td>
+          <td style="${TD}">${e.description}</td>
+        </tr>`
+    })
+    .join('')
+
+  return `<div dir="ltr">
+  <div>
+    <span style="font-size:10pt;font-family:Arial">Hi Team,<br>Please go through my weekly work report,<br></span>
+    <table cellspacing="0" cellpadding="0" dir="ltr" border="1" style="table-layout:fixed;font-size:10pt;font-family:Arial;border-collapse:collapse;border-width:medium;border-style:none;border-color:currentcolor">
+      <colgroup>
+        <col width="43">
+        <col width="112">
+        <col width="161">
+        <col width="107">
+        <col width="327">
+      </colgroup>
+      <tbody>
+        <tr style="height:21px">
+          <td style="border:1px solid rgb(0,0,0);overflow:hidden;padding:2px 3px;vertical-align:middle;background-color:rgb(153,153,153);font-weight:bold;text-align:center" colspan="5">Work Report_${weekLabel}</td>
+        </tr>
+        <tr style="height:21px">
+          <td style="${TH_FIRST}">Sl No</td>
+          <td style="${TH}">Project</td>
+          <td style="${TH}">Task</td>
+          <td style="${TH}">Status</td>
+          <td style="${TH}">Remarks</td>
+        </tr>
+        ${rows}
+      </tbody>
+    </table>
+  </div>
+  ${signature?.trim()
+    ? `<div dir="ltr"><br><br>${signature}</div>`
+    : `<div dir="ltr">
+    <p style="color:rgb(34,34,34);font-family:verdana,sans-serif;line-height:1.656;margin-top:0;margin-bottom:0">
+      <span style="font-size:10pt;font-family:Verdana;color:rgb(0,0,0)"><br><br><br>Thanks &amp; Regards</span>
+    </p>
+    <p style="color:rgb(34,34,34);font-family:verdana,sans-serif;line-height:1.656;margin-top:0;margin-bottom:0"><br></p>
+    <table style="border:none;border-collapse:collapse">
+      <tbody>
+        <tr>
+          <td style="border-bottom:0.75pt solid rgb(183,183,183);border-top:0.75pt solid rgb(183,183,183);vertical-align:bottom;padding:2pt">
+            <p style="line-height:1.656;margin-top:0;margin-bottom:0"><font color="#875a7b" face="Verdana"><b>${userName}</b></font></p>
+            <p style="line-height:1.656;margin-top:0;margin-bottom:0"><font face="Verdana" color="#666666">${userEmail}</font></p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`}
+</div>`
+}
+
+export async function sendWeeklyWorkReport(params: {
+  accessToken: string
+  refreshToken?: string | null
+  userEmail: string
+  userName: string
+  recipients: string[]
+  cc?: string[]
+  bcc?: string[]
+  weekLabel: string
+  entries: WeeklyEntry[]
+  signature?: string
+}) {
+  const { userEmail, userName, recipients, cc = [], bcc = [], weekLabel, entries, signature } = params
+  let { accessToken } = params
+
+  const html = buildWeeklyEmailHtml({ userName, userEmail, weekLabel, entries, signature })
+  const subject = `Weekly Work Report_${weekLabel}_${userName.toUpperCase()}`
+
+  const headers: string[] = [
+    `From: "${userName}" <${userEmail}>`,
+    `To: ${recipients.join(', ')}`,
+  ]
+  if (cc.length) headers.push(`Cc: ${cc.join(', ')}`)
+  if (bcc.length) headers.push(`Bcc: ${bcc.join(', ')}`)
+  headers.push(`Subject: ${subject}`, `Content-Type: text/html; charset=utf-8`, `MIME-Version: 1.0`, ``)
+
+  const message = [...headers, html].join('\r\n')
+  const raw = Buffer.from(message).toString('base64url')
+
+  async function trySend(token: string) {
+    return fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ raw }),
+    })
+  }
+
+  let res = await trySend(accessToken)
+  if (res.status === 401 && params.refreshToken) {
+    accessToken = await refreshAccessToken(params.refreshToken)
+    res = await trySend(accessToken)
+  }
+
+  if (!res.ok) {
+    const err = await res.json()
+    throw new Error(err?.error?.message || `Gmail API error ${res.status}`)
+  }
+}

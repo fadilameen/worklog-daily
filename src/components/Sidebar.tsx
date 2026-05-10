@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { CalendarDays, History, Settings, LogOut, CheckCircle2, Plus, Sun, Moon } from 'lucide-react'
+import { CalendarDays, CalendarRange, History, Settings, LogOut, CheckCircle2, Plus, Sun, Moon } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { GoogleIcon, GithubIcon } from '@/components/icons'
 
 const NAV = [
   { href: '/dashboard', label: 'Today', icon: CalendarDays },
+  { href: '/weekly', label: 'Weekly', icon: CalendarRange },
   { href: '/history', label: 'History', icon: History },
   { href: '/settings', label: 'Settings', icon: Settings },
 ] as const
