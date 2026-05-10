@@ -115,7 +115,7 @@ export async function GET(request: Request) {
       const cs = ev.payload?.commits || []
       const userLogin = auth.username.toLowerCase()
       const userName = (auth.name || '').toLowerCase()
-      const userEmails = (auth.emails || '').toLowerCase().split(',').map((e) => e.trim()).filter(Boolean)
+      const userEmails: string[] = (auth.emails || '').toLowerCase().split(',').map((e: string) => e.trim()).filter(Boolean)
       for (const c of cs) {
         if (seenSha.has(c.sha)) continue
         const authorName = (c.author?.name || '').toLowerCase()
