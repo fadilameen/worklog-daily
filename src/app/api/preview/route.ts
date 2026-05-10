@@ -24,7 +24,7 @@ export async function POST(request: Request) {
   const settings = await prisma.userSettings.findUnique({ where: { userId: session.user.id } })
 
   const html = buildEmailHtml({
-    userName: settings?.displayName || session.user.name || session.user.email || 'User',
+    userName: session.user.name || session.user.email || 'User',
     userEmail: session.user.email || '',
     date,
     entries,

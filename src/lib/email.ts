@@ -137,6 +137,7 @@ export async function sendWorkReport(params: {
   refreshToken?: string | null
   userEmail: string
   userName: string
+  subjectName?: string
   recipients: string[]
   cc?: string[]
   bcc?: string[]
@@ -144,12 +145,12 @@ export async function sendWorkReport(params: {
   entries: TimesheetEntry[]
   signature?: string
 }) {
-  const { userEmail, userName, recipients, cc = [], bcc = [], date, entries, signature } = params
+  const { userEmail, userName, subjectName, recipients, cc = [], bcc = [], date, entries, signature } = params
   let { accessToken } = params
 
   const formattedDate = formatEmailDate(date)
   const html = buildEmailHtml({ userName, userEmail, date, entries, signature })
-  const subject = `Daily Work Report_${formattedDate}_${userName.toUpperCase()}`
+  const subject = `Daily Work Report_${formattedDate}_${(subjectName || userName).toUpperCase()}`
 
   const headers: string[] = [
     `From: "${userName}" <${userEmail}>`,
@@ -275,6 +276,7 @@ export async function sendWeeklyWorkReport(params: {
   refreshToken?: string | null
   userEmail: string
   userName: string
+  subjectName?: string
   recipients: string[]
   cc?: string[]
   bcc?: string[]
@@ -282,11 +284,11 @@ export async function sendWeeklyWorkReport(params: {
   entries: WeeklyEntry[]
   signature?: string
 }) {
-  const { userEmail, userName, recipients, cc = [], bcc = [], weekLabel, entries, signature } = params
+  const { userEmail, userName, subjectName, recipients, cc = [], bcc = [], weekLabel, entries, signature } = params
   let { accessToken } = params
 
   const html = buildWeeklyEmailHtml({ userName, userEmail, weekLabel, entries, signature })
-  const subject = `Weekly Work Report_${weekLabel}_${userName.toUpperCase()}`
+  const subject = `Weekly Work Report_${weekLabel}_${(subjectName || userName).toUpperCase()}`
 
   const headers: string[] = [
     `From: "${userName}" <${userEmail}>`,
