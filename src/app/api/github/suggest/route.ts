@@ -183,7 +183,10 @@ export async function GET(request: Request) {
       projectName: m?.projectName ?? '',
       taskId: m?.taskId ?? null,
       taskName: m?.taskName ?? '',
-      description: items.map((c) => `- ${c.message.split('\n').map((l, i) => i === 0 ? l : `  ${l}`).join('\n')}`).join('\n\n'),
+      description: items
+        .filter((c) => c.sha !== 'create' && !c.sha.startsWith('pr-') && !c.sha.startsWith('iss-'))
+        .map((c) => `- ${c.message.split('\n').map((l, i) => i === 0 ? l : `  ${l}`).join('\n')}`)
+        .join('\n\n'),
       commits: items.map((c) => c.message),
       isPersonal: false,
     }
