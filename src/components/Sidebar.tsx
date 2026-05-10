@@ -108,13 +108,16 @@ export function Sidebar() {
               </span>
             </div>
             {github.connected ? (
-              <button
-                onClick={disconnectGithub}
-                className="text-[10px] font-mono uppercase text-muted-foreground hover:text-destructive"
-                title="Disconnect"
-              >
-                ×
-              </button>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
+                <button
+                  onClick={disconnectGithub}
+                  className="text-[10px] font-mono uppercase text-muted-foreground hover:text-destructive"
+                  title="Disconnect"
+                >
+                  ×
+                </button>
+              </div>
             ) : (
               <a
                 href="/api/github/connect"
