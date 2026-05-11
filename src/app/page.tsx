@@ -35,8 +35,7 @@ export default function LoginPage() {
       {/* Left: brand */}
       <div className="hidden flex-col justify-between p-12 lg:flex">
         <div className="flex items-center gap-2">
-          <img src="/logo.svg" alt="WorkLog" className="h-8 w-8 rounded-md" />
-          <span className="font-semibold tracking-tight">WorkLog</span>
+          <img src="/logo-wordmark.svg" alt="WorkLog" className="h-10" />
         </div>
 
         <motion.div
@@ -73,10 +72,7 @@ export default function LoginPage() {
           className="w-full max-w-sm space-y-6"
         >
           <div className="lg:hidden flex items-center gap-2">
-            <div className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-foreground font-mono text-sm font-bold">
-              W
-            </div>
-            <span className="font-semibold tracking-tight">WorkLog</span>
+            <img src="/logo-wordmark.svg" alt="WorkLog" className="h-8" />
           </div>
 
           <div>
