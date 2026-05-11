@@ -1,6 +1,6 @@
-<svg style="background:#100F18" xmlns="http://www.w3.org/2000/svg" width="865" height="260">
-  <!-- icon: crop 360,260 560x510 scaled to 260h -->
-  <g transform="scale(0.5098039215686274) translate(-360 -260)"><path fill="none" opacity="1.000000" stroke="none" 
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="360 260 560 510">
+  <rect x="360" y="260" width="560" height="510" fill="#100F18" rx="60"/>
+<path fill="#100F18" opacity="1.000000" stroke="none" 
 	d="
 M839.000000,1255.000000 
 	C559.333313,1255.000000 280.166656,1255.000000 1.000000,1255.000000 
@@ -860,15 +860,5 @@ z"/>
 M795.294922,491.716736 
 	C795.191345,493.196106 794.928650,494.381042 794.396240,496.782288 
 	C792.558960,491.290253 792.558960,491.290253 795.294922,491.716736 
-z"/></g>
-  <!-- WorkLog text -->
-  <text
-    x="301"
-    y="168"
-    font-family="'Inter Tight', Inter, system-ui, sans-serif"
-    font-weight="700"
-    font-size="148"
-    fill="#F0F0F0"
-    letter-spacing="-4"
-  >WorkLog</text>
+z"/>
 </svg>
