@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildStyleBlock } from '@/lib/utils'
+import { aiComplete, aiConfigFromSettings, type AiConfig } from '@/lib/ai'
 
 interface RawRow {
   date: string
@@ -20,25 +21,10 @@ interface GroupedEntry {
   perDay: Array<{ date: string; status: string; description: string }>
 }
 
-async function aiSummarize(prompt: string): Promise<string> {
+async function aiSummarize(prompt: string, config: AiConfig): Promise<string> {
   console.log('[weekly/concise] PROMPT:\n' + prompt + '\n--- END PROMPT ---')
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || 'openai/gpt-oss-120b:free',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-    const data = await res.json()
-    console.log('[weekly/concise] STATUS:', res.status, '| RAW:', JSON.stringify(data, null, 2))
-    const msg = data.choices?.[0]?.message
-    return ((msg?.content || msg?.reasoning || '') as string).trim()
+    return await aiComplete(prompt, config, 'weekly/concise')
   } catch (e) {
     console.error('[weekly/concise] AI ERROR:', (e as Error).message)
     return ''
@@ -73,9 +59,10 @@ export async function POST(request: Request) {
 
   const settings = await prisma.userSettings.findUnique({
     where: { userId: session.user.id },
-    select: { descriptionStyle: true },
+    select: { descriptionStyle: true, aiProvider: true, openrouterApiKey: true, openrouterModel: true, geminiApiKey: true, geminiModel: true },
   })
   const styleBlock = buildStyleBlock(settings?.descriptionStyle)
+  const aiConfig = aiConfigFromSettings(settings ?? null)
 
   const grouped = Array.from(groups.values())
   const summarized = await Promise.all(
@@ -99,7 +86,7 @@ Rules:
 - Long comma-spliced sentences. Parenthetical asides for the WHY.
 - "Also fixed…" / "Also polished…" to chain.
 - Output ONLY the description paragraph(s). No preamble.`
-      const summary = await aiSummarize(prompt)
+      const summary = await aiSummarize(prompt, aiConfig)
       return { ...g, description: summary || g.perDay.map((d) => d.description).join(' ') }
     })
   )

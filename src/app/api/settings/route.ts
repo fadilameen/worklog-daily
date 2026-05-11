@@ -26,6 +26,8 @@ export async function POST(request: Request) {
       'odooUrl', 'odooUsername', 'odooPassword', 'odooDatabase',
       'emailRecipients', 'emailCc', 'emailBcc', 'emailSignature',
       'descriptionStyle', 'weeklyFilterTo', 'displayName',
+      'wordCountMode', 'wordCountShort', 'wordCountConcise', 'wordCountDetailed',
+      'aiProvider', 'openrouterApiKey', 'openrouterModel', 'geminiApiKey', 'geminiModel',
     ]
     const data: Record<string, unknown> = {}
     for (const key of allowed) {

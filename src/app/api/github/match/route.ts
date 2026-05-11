@@ -3,31 +3,13 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildStyleBlock, istDayUtcRange } from '@/lib/utils'
+import { aiComplete, aiConfigFromSettings, type AiConfig } from '@/lib/ai'
+import { fetchCommitsAllBranches } from '@/lib/github'
 
-interface CommitItem {
-  message: string
-  sha: string
-}
-
-async function aiPick(prompt: string, label: string): Promise<string> {
+async function aiPick(prompt: string, label: string, config: AiConfig): Promise<string> {
   console.log(`[github/match][${label}] PROMPT:\n` + prompt + '\n--- END PROMPT ---')
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: process.env.OPENROUTER_MODEL || 'openai/gpt-oss-120b:free',
-        max_tokens: 800,
-        messages: [{ role: 'user', content: prompt }],
-      }),
-    })
-    const data = await res.json()
-    console.log(`[github/match][${label}] STATUS:`, res.status, '| RAW:', JSON.stringify(data, null, 2))
-    const msg = data.choices?.[0]?.message
-    const text = ((msg?.content || msg?.reasoning || '') as string).trim()
+    const text = await aiComplete(prompt, config, `github/match/${label}`)
     console.log(`[github/match][${label}] OUTPUT:\n${text}\n--- END OUTPUT ---`)
     return text
   } catch (e) {
@@ -46,29 +28,19 @@ export async function POST(request: Request) {
   const auth = await prisma.githubAuth.findUnique({ where: { userId: session.user.id } })
   if (!auth) return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 })
 
-  const settings = await prisma.userSettings.findUnique({ where: { userId: session.user.id } })
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId: session.user.id },
+    select: { descriptionStyle: true, aiProvider: true, openrouterApiKey: true, openrouterModel: true, geminiApiKey: true, geminiModel: true },
+  })
+  const aiConfig = aiConfigFromSettings(settings ?? null)
 
-  // Fetch commits for the repo on date
-  const headers = {
-    Authorization: `Bearer ${auth.accessToken}`,
-    Accept: 'application/vnd.github.cloak-preview+json',
-  }
   const { startUtc, endUtc } = istDayUtcRange(date)
-  const commitUrl = `https://api.github.com/search/commits?q=author:${auth.username}+author-date:${startUtc}..${endUtc}+repo:${repo}&per_page=50`
-  console.log('[github/match] COMMIT REQUEST:', commitUrl)
-  const res = await fetch(commitUrl, { headers })
-  const data = await res.json()
-  console.log('[github/match] COMMIT STATUS:', res.status, '| total:', data.total_count)
-  if (!res.ok) return NextResponse.json({ error: data.message || 'GitHub error' }, { status: 500 })
-
-  type RawCommit = { commit: { message: string }; sha: string; parents?: unknown[] }
-  const commits: CommitItem[] = (data.items || [])
-    .filter((c: RawCommit) => !Array.isArray(c.parents) || c.parents.length <= 1)
-    .filter((c: RawCommit) => !/^Merge (pull request|branch|remote-tracking branch|commit) /i.test(c.commit.message.split('\n')[0]))
-    .map((c: RawCommit) => ({ message: c.commit.message, sha: c.sha.slice(0, 7) }))
+  console.log('[github/match] fetching all branches for repo:', repo, '| date:', date)
+  const commits = await fetchCommitsAllBranches(repo, auth.username, startUtc, endUtc, auth.accessToken)
+  console.log('[github/match] commits found across all branches:', commits.length)
 
   const commitsText = commits
-    .map((c) => `Commit ${c.sha}:\n${c.message.trim()}`)
+    .map((c) => `Commit ${c.sha.slice(0, 7)}:\n${c.message.trim()}`)
     .join('\n\n---\n\n')
 
   // Saved mapping?
@@ -102,7 +74,7 @@ Hard rules:
 - Use "Also fixed…" / "Also polished…" to chain follow-up sentences.
 - Reference UI labels in straight quotes ("Total"), not backticks.
 - Output ONLY the description paragraph(s). No preamble like "Here is…". No bullets.`
-  const description = (await aiPick(descPrompt, 'description-from-commits')).trim() || commitsText
+  const description = (await aiPick(descPrompt, 'description-from-commits', aiConfig)).trim() || commitsText
 
   return NextResponse.json({
     repo,

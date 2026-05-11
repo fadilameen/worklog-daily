@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { istDayUtcRange, utcInstantToIstDate } from '@/lib/utils'
+import { fetchCommitsAllBranches } from '@/lib/github'
 
 interface CommitItem {
   repo: string
@@ -22,8 +23,6 @@ interface SuggestedEntry {
   commits: string[]
   isPersonal: boolean
 }
-
-const DEFAULT_DAY_HOURS = 8
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions)
@@ -162,8 +161,18 @@ export async function GET(request: Request) {
     if (!hasRealCommit) byRepo.delete(repo)
   }
 
-  if (byRepo.size === 0) return NextResponse.json({ suggestions: [], totalCommits: 0 })
-  const totalCommits = Array.from(byRepo.values()).reduce((sum, arr) => sum + arr.length, 0) || 1
+  // Supplement: fetch all branches per repo to catch commits missed by events+search
+  // (events only show last 300 events; search only indexes default branch)
+  const reposWithCommits = Array.from(byRepo.keys())
+  await Promise.all(
+    reposWithCommits.map(async (repo) => {
+      const branchCommits = await fetchCommitsAllBranches(repo, auth.username, startUtc, endUtc, auth.accessToken)
+      for (const c of branchCommits) dedupAdd(repo, c.sha, c.message)
+    })
+  )
+  console.log('[github/suggest] after all-branch supplement:', Array.from(byRepo.values()).reduce((s, a) => s + a.length, 0), 'total commits')
+
+  if (byRepo.size === 0) return NextResponse.json({ suggestions: [] })
 
   // Saved mappings — repos already linked to project/task
   const repoNames = Array.from(byRepo.keys())
@@ -173,12 +182,11 @@ export async function GET(request: Request) {
   const mapByRepo = new Map(mappings.map((m) => [m.repoFullName, m]))
 
   const suggestions: SuggestedEntry[] = Array.from(byRepo.entries()).map(([repo, items]) => {
-    const hours = Math.round((items.length / totalCommits) * DEFAULT_DAY_HOURS * 4) / 4
     const m = mapByRepo.get(repo)
     return {
       repo,
       commitCount: items.length,
-      hours,
+      hours: 8,
       projectId: m?.projectId ?? null,
       projectName: m?.projectName ?? '',
       taskId: m?.taskId ?? null,
@@ -200,5 +208,5 @@ export async function GET(request: Request) {
     return b.commitCount - a.commitCount
   })
 
-  return NextResponse.json({ suggestions, totalCommits })
+  return NextResponse.json({ suggestions })
 }

@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Switch } from '@/components/ui/switch'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Combobox } from '@/components/ui/combobox'
 import { DatePicker } from '@/components/ui/date-picker'
 import {
@@ -103,6 +104,8 @@ export default function DashboardPage() {
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [recentProjects, setRecentProjects] = useState<number[]>([])
   const [recentTasksByProject, setRecentTasksByProject] = useState<Record<string, number[]>>({})
+  const [wordCountMode, setWordCountMode] = useState<'short' | 'concise' | 'detailed' | 'none'>('concise')
+  const [wordCounts, setWordCounts] = useState({ short: 20, concise: 70, detailed: 110 })
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/')
@@ -160,6 +163,24 @@ export default function DashboardPage() {
       .catch(() => {})
   }, [session])
 
+  // Load word count settings
+  useEffect(() => {
+    if (!session) return
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((d) => {
+        if (!d || d.error) return
+        const mode = d.wordCountMode
+        if (mode === 'short' || mode === 'concise' || mode === 'detailed' || mode === 'none') setWordCountMode(mode)
+        setWordCounts({
+          short: d.wordCountShort || 20,
+          concise: d.wordCountConcise || 70,
+          detailed: d.wordCountDetailed || 110,
+        })
+      })
+      .catch(() => {})
+  }, [session])
+
   const updateEntry = (id: string, patch: Partial<TimesheetEntry>) => {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)))
   }
@@ -208,6 +229,7 @@ export default function DashboardPage() {
           hours: entry.hours,
           hint: entry.aiHint,
           date,
+          wordCount: wordCountMode === 'none' ? null : wordCounts[wordCountMode],
         }),
       })
       const data = await res.json()
@@ -331,7 +353,7 @@ export default function DashboardPage() {
           __pickedRepo: repo,
           __repo: repo,
           aiHint: commitsAsHint,
-          hours: sug?.hours ?? e.hours,
+          hours: e.hours,
         }
         if (sug?.projectId) {
           return {
@@ -660,6 +682,17 @@ export default function DashboardPage() {
                     rows={1}
                     className="flex-1 text-xs resize-none py-2 min-h-9 [field-sizing:content] max-h-48"
                   />
+                  <Select value={wordCountMode} onValueChange={(v) => setWordCountMode(v as 'short' | 'concise' | 'detailed' | 'none')}>
+                    <SelectTrigger className="h-9 w-28 shrink-0 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="short" className="text-xs">Short (~{wordCounts.short}w)</SelectItem>
+                      <SelectItem value="concise" className="text-xs">Concise (~{wordCounts.concise}w)</SelectItem>
+                      <SelectItem value="detailed" className="text-xs">Detailed (~{wordCounts.detailed}w)</SelectItem>
+                      <SelectItem value="none" className="text-xs">None</SelectItem>
+                    </SelectContent>
+                  </Select>
                   <Button
                     onClick={() => generateDescription(entry.id)}
                     disabled={!entry.projectId || !entry.taskId || entry.loadingAI}

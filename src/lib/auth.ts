@@ -17,7 +17,7 @@ export const authOptions: NextAuthOptions = {
         },
       },
       httpOptions: {
-        timeout: 15000,
+        timeout: 120000,
       },
     }),
   ],
