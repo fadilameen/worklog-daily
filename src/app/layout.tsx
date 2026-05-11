@@ -20,6 +20,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: 'WorkLog — log once, sync everywhere',
   description: 'Fill one form. Push timesheet to Odoo and email a daily report — at the same time.',
+  icons: { icon: '/logo.svg' },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

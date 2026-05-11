@@ -35,9 +35,7 @@ export default function LoginPage() {
       {/* Left: brand */}
       <div className="hidden flex-col justify-between p-12 lg:flex">
         <div className="flex items-center gap-2">
-          <div className="grid h-8 w-8 place-items-center rounded-md bg-accent text-accent-foreground font-mono text-sm font-bold">
-            W
-          </div>
+          <img src="/logo.svg" alt="WorkLog" className="h-8 w-8 rounded-md" />
           <span className="font-semibold tracking-tight">WorkLog</span>
         </div>
 
