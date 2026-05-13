@@ -51,7 +51,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10 lg:px-10 lg:py-14">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-14">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">History</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Past submissions</h1>

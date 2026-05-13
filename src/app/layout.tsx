@@ -1,4 +1,4 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Inter_Tight, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
 import { Providers } from '@/components/Providers'
@@ -17,10 +17,31 @@ const jetbrainsMono = JetBrains_Mono({
   display: 'swap',
 })
 
+export const viewport: Viewport = {
+  themeColor: '#0a0a0a',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+}
+
 export const metadata: Metadata = {
   title: 'WorkLog — log once, sync everywhere',
   description: 'Fill one form. Push timesheet to Odoo and email a daily report — at the same time.',
-  icons: { icon: '/logo.svg' },
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    title: 'WorkLog',
+    statusBarStyle: 'black-translucent',
+  },
+  formatDetection: {
+    telephone: false,
+  },
+  icons: {
+    icon: '/logo.svg',
+    shortcut: '/logo.svg',
+    apple: '/logo.svg',
+  },
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

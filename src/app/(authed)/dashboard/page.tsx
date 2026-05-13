@@ -428,15 +428,15 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10 lg:px-10 lg:py-14">
-      <header className="flex items-end justify-between flex-wrap gap-3">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-14">
+      <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Today</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">Log work</h1>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <DatePicker value={date} onChange={setDate} className="w-52" />
-          <div className="flex items-center gap-1.5 text-sm text-muted-foreground">
+        <div className="flex items-center gap-3">
+          <DatePicker value={date} onChange={setDate} className="w-full sm:w-52" />
+          <div className="flex items-center gap-1.5 text-sm text-muted-foreground shrink-0">
             <CalendarDays className="h-4 w-4" />
             <span className="font-mono">{totalHours.toFixed(2)}h</span>
           </div>
@@ -617,12 +617,33 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-end gap-4">
-                <div className="flex-1 min-w-[260px] space-y-2">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0 space-y-2">
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                     Status
                   </Label>
-                  <div className="flex flex-wrap gap-1.5">
+                  
+                  {/* Mobile Dropdown */}
+                  <div className="sm:hidden">
+                    <Select value={entry.status} onValueChange={(v) => updateEntry(entry.id, { status: v })}>
+                      <SelectTrigger className="h-9 w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {STATUSES.map((s) => (
+                          <SelectItem key={s} value={s}>
+                            <div className="flex items-center gap-2">
+                              <div className="h-2 w-2 rounded-full" style={{ backgroundColor: STATUS_BG[s] || 'currentColor' }} />
+                              {s}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Desktop Buttons */}
+                  <div className="hidden sm:flex flex-wrap gap-1.5">
                     {STATUSES.map((s) => {
                       const active = entry.status === s
                       return (
@@ -644,7 +665,7 @@ export default function DashboardPage() {
                     })}
                   </div>
                 </div>
-                <div className="space-y-2">
+                <div className="shrink-0 space-y-2">
                   <Label className="text-xs uppercase tracking-wider text-muted-foreground">
                     Hours
                   </Label>
@@ -674,7 +695,7 @@ export default function DashboardPage() {
                   className="resize-none"
                 />
 
-                <div className="flex items-start gap-2 pt-1">
+                <div className="flex flex-col gap-2 pt-1 sm:flex-row sm:items-start">
                   <Textarea
                     value={entry.aiHint}
                     onChange={(e) => updateEntry(entry.id, { aiHint: e.target.value })}
@@ -682,30 +703,32 @@ export default function DashboardPage() {
                     rows={1}
                     className="flex-1 text-xs resize-none py-2 min-h-9 [field-sizing:content] max-h-48"
                   />
-                  <Select value={wordCountMode} onValueChange={(v) => setWordCountMode(v as 'short' | 'concise' | 'detailed' | 'none')}>
-                    <SelectTrigger className="h-9 w-28 shrink-0 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="short" className="text-xs">Short (~{wordCounts.short}w)</SelectItem>
-                      <SelectItem value="concise" className="text-xs">Concise (~{wordCounts.concise}w)</SelectItem>
-                      <SelectItem value="detailed" className="text-xs">Detailed (~{wordCounts.detailed}w)</SelectItem>
-                      <SelectItem value="none" className="text-xs">None</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    onClick={() => generateDescription(entry.id)}
-                    disabled={!entry.projectId || !entry.taskId || entry.loadingAI}
-                    size="sm"
-                    className="shrink-0 gap-1.5 bg-accent text-accent-foreground hover:opacity-90"
-                  >
-                    {entry.loadingAI ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3.5 w-3.5" />
-                    )}
-                    {entry.loadingAI ? 'Generating' : 'Generate'}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Select value={wordCountMode} onValueChange={(v) => setWordCountMode(v as 'short' | 'concise' | 'detailed' | 'none')}>
+                      <SelectTrigger className="h-9 w-[110px] shrink-0 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="short" className="text-xs">Short (~{wordCounts.short}w)</SelectItem>
+                        <SelectItem value="concise" className="text-xs">Concise (~{wordCounts.concise}w)</SelectItem>
+                        <SelectItem value="detailed" className="text-xs">Detailed (~{wordCounts.detailed}w)</SelectItem>
+                        <SelectItem value="none" className="text-xs">None</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Button
+                      onClick={() => generateDescription(entry.id)}
+                      disabled={!entry.projectId || !entry.taskId || entry.loadingAI}
+                      size="sm"
+                      className="flex-1 sm:flex-none shrink-0 gap-1.5 bg-accent text-accent-foreground hover:opacity-90"
+                    >
+                      {entry.loadingAI ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5" />
+                      )}
+                      {entry.loadingAI ? 'Generating' : 'Generate'}
+                    </Button>
+                  </div>
                 </div>
               </div>
             </div>

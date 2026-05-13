@@ -183,7 +183,7 @@ export default function WeeklyPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-10 lg:px-10 lg:py-14">
+    <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-14">
       <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Weekly</p>
@@ -232,38 +232,40 @@ export default function WeeklyPage() {
                     {usedDates.length} days
                   </Badge>
                 </div>
-                <table className="w-full text-sm">
-                  <thead className="bg-surface/40">
-                    <tr className="border-b border-border">
-                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Date</th>
-                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Project</th>
-                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Task</th>
-                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Status</th>
-                      <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Remarks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rawRows.map((r, i) => (
-                      <tr key={i} className="border-b border-border/50 last:border-0">
-                        <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">{r.date}</td>
-                        <td className="px-4 py-2.5 text-xs">{r.projectName}</td>
-                        <td className="px-4 py-2.5 text-xs">{r.taskName}</td>
-                        <td className="px-4 py-2.5">
-                          <span
-                            className="inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold"
-                            style={{
-                              backgroundColor: STATUS_BG[r.status] || 'transparent',
-                              color: STATUS_FG[r.status] || 'inherit',
-                            }}
-                          >
-                            {r.status}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.description}</td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm min-w-[600px]">
+                    <thead className="bg-surface/40">
+                      <tr className="border-b border-border">
+                        <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Date</th>
+                        <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Project</th>
+                        <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Task</th>
+                        <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Status</th>
+                        <th className="px-4 py-2.5 text-left font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Remarks</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {rawRows.map((r, i) => (
+                        <tr key={i} className="border-b border-border/50 last:border-0">
+                          <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">{r.date}</td>
+                          <td className="px-4 py-2.5 text-xs">{r.projectName}</td>
+                          <td className="px-4 py-2.5 text-xs">{r.taskName}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap">
+                            <span
+                              className="inline-block rounded-md px-2 py-0.5 text-[10px] font-semibold"
+                              style={{
+                                backgroundColor: STATUS_BG[r.status] || 'transparent',
+                                color: STATUS_FG[r.status] || 'inherit',
+                              }}
+                            >
+                              {r.status}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-xs text-muted-foreground">{r.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
               <div className="mt-6">

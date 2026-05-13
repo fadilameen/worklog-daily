@@ -225,7 +225,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-10 lg:px-10 lg:py-14">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-14">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Settings</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Configuration</h1>
@@ -235,20 +235,20 @@ export default function SettingsPage() {
       </header>
 
       <Tabs defaultValue="odoo" className="mt-8">
-        <TabsList>
-          <TabsTrigger value="odoo" className="gap-2">
+        <TabsList className="flex h-12 w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-lg bg-surface/60 p-1.5 text-muted-foreground [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+          <TabsTrigger value="odoo" className="gap-2 shrink-0 px-4 py-2">
             <KeyRound className="h-4 w-4" /> Odoo
           </TabsTrigger>
-          <TabsTrigger value="gmail" className="gap-2">
+          <TabsTrigger value="gmail" className="gap-2 shrink-0 px-4 py-2">
             <Mail className="h-4 w-4" /> Gmail
           </TabsTrigger>
-          <TabsTrigger value="recipients" className="gap-2">
+          <TabsTrigger value="recipients" className="gap-2 shrink-0 px-4 py-2">
             <Users className="h-4 w-4" /> Recipients
           </TabsTrigger>
-          <TabsTrigger value="ai" className="gap-2">
+          <TabsTrigger value="ai" className="gap-2 shrink-0 px-4 py-2">
             <Bot className="h-4 w-4" /> AI
           </TabsTrigger>
-          <TabsTrigger value="style" className="gap-2">
+          <TabsTrigger value="style" className="gap-2 shrink-0 px-4 py-2">
             <Sparkles className="h-4 w-4" /> AI Style
           </TabsTrigger>
         </TabsList>
