@@ -29,8 +29,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { Eye } from 'lucide-react'
+import { Eye, Search } from 'lucide-react'
 import { GithubIcon } from '@/components/icons'
+import { ManualRepoPicker } from '@/components/ManualRepoPicker'
 import { STATUSES, STATUS_BG, STATUS_FG } from '@/lib/status'
 import { formatDate, cn } from '@/lib/utils'
 
@@ -371,6 +372,8 @@ export default function DashboardPage() {
     if (sug?.projectId) fetchTasksForEntry(entryId, sug.projectId)
   }
 
+  const [manualPickerEntry, setManualPickerEntry] = useState<string | null>(null)
+
   const [previewOpen, setPreviewOpen] = useState(false)
   const [previewHtml, setPreviewHtml] = useState('')
   const [previewMeta, setPreviewMeta] = useState<{ subject: string; to: string[]; cc: string[]; bcc: string[] } | null>(null)
@@ -509,69 +512,78 @@ export default function DashboardPage() {
 
             <div className="space-y-4 px-5 py-4">
               {githubConnected && (
-                <DropdownMenu onOpenChange={(open) => { if (open) fetchSuggestions(false) }}>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className="flex w-full items-center justify-between gap-2 rounded-md border border-dashed border-border bg-surface/40 px-3 py-2 text-xs text-muted-foreground transition hover:border-accent/40 hover:bg-accent/5 hover:text-accent"
-                      title="Pick a GitHub repo"
-                    >
-                        <span className="flex items-center gap-2 min-w-0">
-                          {loadingSuggestions ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                          ) : (
-                            <Wand2 className="h-3.5 w-3.5 shrink-0" />
-                          )}
-                          <span className="truncate">
-                            {entry.__pickedRepo || 'Choose GitHub repo'}
-                          </span>
-                        </span>
-                        <span className="font-mono text-[10px] uppercase tracking-wider opacity-60 shrink-0">
-                          ▼
-                        </span>
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">
-                      <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Repos with activity on {date}
-                      </DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      {(() => {
-                        const usedRepos = new Set(
-                          entries
-                            .filter((e) => e.id !== entry.id && e.__pickedRepo)
-                            .map((e) => e.__pickedRepo!)
-                        )
-                        const available = suggestions.filter((s) => !usedRepos.has(s.repo))
-                        if (loadingSuggestions) return <DropdownMenuItem disabled>Loading…</DropdownMenuItem>
-                        if (available.length === 0) {
-                          return (
-                            <DropdownMenuItem disabled>
-                              {suggestions.length === 0 ? 'No commits this date' : 'All repos used by other entries'}
-                            </DropdownMenuItem>
-                          )
-                        }
-                        return available.map((s) => (
-                          <DropdownMenuItem
-                            key={s.repo}
-                            onSelect={() => pickRepoForEntry(entry.id, s.repo)}
-                            className="flex flex-col items-start gap-0.5 py-2"
-                          >
-                            <div className="flex w-full items-center justify-between">
-                              <span className="font-mono text-xs truncate">{s.repo}</span>
-                              <span className="font-mono text-[10px] text-muted-foreground shrink-0">
-                                {s.commitCount}c
-                              </span>
-                            </div>
-                            {s.projectId && (
-                              <span className="text-[10px] text-accent truncate w-full">
-                                ✓ {s.projectName} → {s.taskName}
-                              </span>
+                <div className="space-y-1.5">
+                  <DropdownMenu onOpenChange={(open) => { if (open) fetchSuggestions(false) }}>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        className="flex w-full items-center justify-between gap-2 rounded-md border border-dashed border-border bg-surface/40 px-3 py-2 text-xs text-muted-foreground transition hover:border-accent/40 hover:bg-accent/5 hover:text-accent"
+                        title="Pick a GitHub repo"
+                      >
+                          <span className="flex items-center gap-2 min-w-0">
+                            {loadingSuggestions ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                            ) : (
+                              <Wand2 className="h-3.5 w-3.5 shrink-0" />
                             )}
-                          </DropdownMenuItem>
-                        ))
-                      })()}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                            <span className="truncate">
+                              {entry.__pickedRepo || 'Choose GitHub repo'}
+                            </span>
+                          </span>
+                          <span className="font-mono text-[10px] uppercase tracking-wider opacity-60 shrink-0">
+                            ▼
+                          </span>
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-[--radix-dropdown-menu-trigger-width]">
+                        <DropdownMenuLabel className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Repos with activity on {date}
+                        </DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {(() => {
+                          const usedRepos = new Set(
+                            entries
+                              .filter((e) => e.id !== entry.id && e.__pickedRepo)
+                              .map((e) => e.__pickedRepo!)
+                          )
+                          const available = suggestions.filter((s) => !usedRepos.has(s.repo))
+                          if (loadingSuggestions) return <DropdownMenuItem disabled>Loading…</DropdownMenuItem>
+                          if (available.length === 0) {
+                            return (
+                              <DropdownMenuItem disabled>
+                                {suggestions.length === 0 ? 'No commits this date' : 'All repos used by other entries'}
+                              </DropdownMenuItem>
+                            )
+                          }
+                          return available.map((s) => (
+                            <DropdownMenuItem
+                              key={s.repo}
+                              onSelect={() => pickRepoForEntry(entry.id, s.repo)}
+                              className="flex flex-col items-start gap-0.5 py-2"
+                            >
+                              <div className="flex w-full items-center justify-between">
+                                <span className="font-mono text-xs truncate">{s.repo}</span>
+                                <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+                                  {s.commitCount}c
+                                </span>
+                              </div>
+                              {s.projectId && (
+                                <span className="text-[10px] text-accent truncate w-full">
+                                  ✓ {s.projectName} → {s.taskName}
+                                </span>
+                              )}
+                            </DropdownMenuItem>
+                          ))
+                        })()}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  <button
+                    onClick={() => setManualPickerEntry(entry.id)}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground transition hover:text-accent"
+                  >
+                    <Search className="h-3 w-3" />
+                    Browse all repos manually
+                  </button>
+                </div>
               )}
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
@@ -800,6 +812,23 @@ export default function DashboardPage() {
             : 'Submit · Odoo only'}
         </Button>
       </div>
+
+      <ManualRepoPicker
+        open={manualPickerEntry !== null}
+        onOpenChange={(open) => { if (!open) setManualPickerEntry(null) }}
+        date={date}
+        onLoad={(commitMessages, repo) => {
+          if (!manualPickerEntry) return
+          setEntries((prev) =>
+            prev.map((e) =>
+              e.id === manualPickerEntry
+                ? { ...e, aiHint: commitMessages.join('\n\n'), __pickedRepo: repo, __repo: repo }
+                : e
+            )
+          )
+          setManualPickerEntry(null)
+        }}
+      />
 
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col">
