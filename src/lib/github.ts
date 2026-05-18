@@ -51,7 +51,7 @@ export async function fetchCommitsAllBranches(
 
   const branchesRes = await fetch(
     `https://api.github.com/repos/${repo}/branches?per_page=100`,
-    { headers }
+    { headers, cache: 'no-store' }
   )
   if (!branchesRes.ok) return []
 
@@ -68,7 +68,7 @@ export async function fetchCommitsAllBranches(
         `?sha=${encodeURIComponent(branch.name)}` +
         `&author=${encodeURIComponent(username)}` +
         `&since=${since}&until=${until}&per_page=100`
-      const res = await fetch(url, { headers })
+      const res = await fetch(url, { headers, cache: 'no-store' })
       if (!res.ok) return
       const data: Array<{ sha: string; commit: { message: string }; parents?: unknown[] }> =
         await res.json()
