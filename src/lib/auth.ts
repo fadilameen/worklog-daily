@@ -23,6 +23,10 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async signIn({ user, account }) {
+      if (user.email) {
+        const existing = await prisma.user.findUnique({ where: { email: user.email }, select: { suspended: true } })
+        if (existing?.suspended) return false
+      }
       if (account?.provider === 'google' && account.access_token && user.id) {
         await prisma.account.updateMany({
           where: { userId: user.id, provider: 'google' },

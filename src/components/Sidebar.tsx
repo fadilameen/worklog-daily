@@ -4,10 +4,11 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { signOut, useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
-import { CalendarDays, CalendarRange, History, Settings, LogOut, CheckCircle2, Plus, Sun, Moon } from 'lucide-react'
+import { CalendarDays, CalendarRange, History, Settings, LogOut, CheckCircle2, Plus, Sun, Moon, Shield } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { GoogleIcon, GithubIcon } from '@/components/icons'
+import { isAdmin } from '@/lib/admin'
 
 const NAV = [
   { href: '/dashboard', label: 'Today', icon: CalendarDays },
@@ -15,6 +16,8 @@ const NAV = [
   { href: '/history', label: 'History', icon: History },
   { href: '/settings', label: 'Settings', icon: Settings },
 ] as const
+
+const ADMIN_NAV = { href: '/admin', label: 'Admin', icon: Shield } as const
 
 export function Sidebar() {
   const { data: session } = useSession()
@@ -61,7 +64,7 @@ export function Sidebar() {
       </div>
 
       <nav className="flex flex-col gap-1">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {[...NAV, ...(isAdmin(session?.user?.email) ? [ADMIN_NAV] : [])].map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
