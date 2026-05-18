@@ -1,19 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { prisma } from '@/lib/db'
+import { getGithubContext } from '@/lib/github'
 
 export async function GET() {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const auth = await prisma.githubAuth.findUnique({ where: { userId: session.user.id } })
-  if (!auth) return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 })
-
-  const headers = {
-    Authorization: `Bearer ${auth.accessToken}`,
-    Accept: 'application/vnd.github+json',
-  }
+  const ctx = await getGithubContext(session.user.id)
+  if (!ctx) return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 })
+  const { headers } = ctx
 
   const res = await fetch(
     'https://api.github.com/user/repos?per_page=100&sort=updated&affiliation=owner,collaborator,organization_member',

@@ -816,7 +816,6 @@ export default function DashboardPage() {
       <ManualRepoPicker
         open={manualPickerEntry !== null}
         onOpenChange={(open) => { if (!open) setManualPickerEntry(null) }}
-        date={date}
         onLoad={(commitMessages, repo) => {
           if (!manualPickerEntry) return
           setEntries((prev) =>

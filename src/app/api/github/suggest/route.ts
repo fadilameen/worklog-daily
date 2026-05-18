@@ -2,14 +2,8 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
-import { istDayUtcRange, utcInstantToIstDate } from '@/lib/utils'
-import { fetchCommitsAllBranches } from '@/lib/github'
-
-interface CommitItem {
-  repo: string
-  message: string
-  sha: string
-}
+import { getGithubContext, fetchCommitsAllBranches, GithubCommit, MERGE_RE } from '@/lib/github'
+import { istDayUtcRange, utcInstantToIstDate, parseEmailList } from '@/lib/utils'
 
 interface SuggestedEntry {
   repo: string
@@ -32,31 +26,17 @@ export async function GET(request: Request) {
   const date = url.searchParams.get('date')
   if (!date) return NextResponse.json({ error: 'date required' }, { status: 400 })
 
-  const auth = await prisma.githubAuth.findUnique({ where: { userId: session.user.id } })
-  if (!auth) return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 })
+  const ctx = await getGithubContext(session.user.id)
+  if (!ctx) return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 })
+  const { auth, headers } = ctx
 
-  const headers = {
-    Authorization: `Bearer ${auth.accessToken}`,
-    Accept: 'application/vnd.github+json',
-  }
-
-  // Source 1: search/commits (authored commits, may miss private/recent)
   const { startUtc, endUtc } = istDayUtcRange(date)
   const searchUrl = `https://api.github.com/search/commits?q=author:${auth.username}+author-date:${startUtc}..${endUtc}&per_page=100`
-  console.log('[github/suggest] SEARCH REQUEST:', searchUrl)
-
-  // Source 2: public events (push, create, PR, issue events)
-  const eventsUrl = `https://api.github.com/users/${auth.username}/events?per_page=100`
-  // Source 3: private events for the authenticated user
-  const privateEventsUrl = `https://api.github.com/users/${auth.username}/events/public?per_page=100`
-  // Source 4: received events (covers org/private if user is auth'd)
-  const userEventsUrl = `https://api.github.com/user/events?per_page=100`
-  console.log('[github/suggest] EVENTS REQUESTS:', eventsUrl, '|', userEventsUrl)
 
   const [searchRes, eventsRes, userEventsRes] = await Promise.all([
     fetch(searchUrl, { headers: { ...headers, Accept: 'application/vnd.github.cloak-preview+json' } }),
-    fetch(eventsUrl, { headers }),
-    fetch(userEventsUrl, { headers }),
+    fetch(`https://api.github.com/users/${auth.username}/events?per_page=100`, { headers }),
+    fetch(`https://api.github.com/user/events?per_page=100`, { headers }),
   ])
 
   const searchData = searchRes.ok ? await searchRes.json() : { items: [] }
@@ -65,26 +45,27 @@ export async function GET(request: Request) {
   console.log('[github/suggest] SEARCH STATUS:', searchRes.status, '| total:', searchData.total_count || 0)
   console.log('[github/suggest] PUBLIC EVENTS:', eventsRes.status, '| count:', Array.isArray(eventsData) ? eventsData.length : 0)
   console.log('[github/suggest] USER EVENTS:', userEventsRes.status, '| count:', Array.isArray(userEventsData) ? userEventsData.length : 0)
-  console.log('[github/suggest] private events url not used:', privateEventsUrl)
-  // Combine
   const allEvents: unknown[] = []
   if (Array.isArray(eventsData)) allEvents.push(...eventsData)
   if (Array.isArray(userEventsData)) allEvents.push(...userEventsData)
 
-  const byRepo = new Map<string, CommitItem[]>()
+  const userLogin = auth.username.toLowerCase()
+  const userName = (auth.name || '').toLowerCase()
+  const userEmails = parseEmailList(auth.emails).map((e) => e.toLowerCase())
+
+  const byRepo = new Map<string, GithubCommit[]>()
   const seenSha = new Set<string>()
 
   function dedupAdd(repo: string, sha: string, message: string) {
     if (seenSha.has(sha)) return
-    // Skip merge commits — subject starts with "Merge " or "Merge pull request"
     const subject = message.split('\n')[0].trim()
-    if (/^Merge (pull request|branch|remote-tracking branch|commit) /i.test(subject)) return
+    if (MERGE_RE.test(subject)) return
     seenSha.add(sha)
     if (!byRepo.has(repo)) byRepo.set(repo, [])
     byRepo.get(repo)!.push({ repo, message: message.trim(), sha: sha.slice(0, 7) })
   }
 
-  // Add commits from search (skip merges via parents.length check)
+  // parents.length > 1 catches merge commits the subject regex alone misses
   for (const c of (searchData.items || []) as Array<{ repository: { full_name: string }; commit: { message: string }; sha: string; parents?: unknown[] }>) {
     if (Array.isArray(c.parents) && c.parents.length > 1) continue
     dedupAdd(c.repository.full_name, c.sha, c.commit.message)
@@ -114,9 +95,6 @@ export async function GET(request: Request) {
 
     if (ev.type === 'PushEvent') {
       const cs = ev.payload?.commits || []
-      const userLogin = auth.username.toLowerCase()
-      const userName = (auth.name || '').toLowerCase()
-      const userEmails: string[] = (auth.emails || '').toLowerCase().split(',').map((e: string) => e.trim()).filter(Boolean)
       for (const c of cs) {
         if (seenSha.has(c.sha)) continue
         const authorName = (c.author?.name || '').toLowerCase()
@@ -153,20 +131,18 @@ export async function GET(request: Request) {
     }
   }
 
-  // Strict: drop repos that only have non-commit activity (Create/PR/Issue but no real commits)
+  const isRealCommit = (i: GithubCommit) =>
+    i.sha !== 'create' && !i.sha.startsWith('pr-') && !i.sha.startsWith('iss-')
+
   for (const [repo, items] of Array.from(byRepo.entries())) {
-    const hasRealCommit = items.some(
-      (i) => i.sha !== 'create' && !i.sha.startsWith('pr-') && !i.sha.startsWith('iss-')
-    )
-    if (!hasRealCommit) byRepo.delete(repo)
+    if (!items.some(isRealCommit)) byRepo.delete(repo)
   }
 
-  // Supplement: fetch all branches per repo to catch commits missed by events+search
-  // (events only show last 300 events; search only indexes default branch)
+  // events only show last 300 events; search only indexes default branch
   const reposWithCommits = Array.from(byRepo.keys())
   await Promise.all(
     reposWithCommits.map(async (repo) => {
-      const branchCommits = await fetchCommitsAllBranches(repo, auth.username, startUtc, endUtc, auth.accessToken)
+      const branchCommits = await fetchCommitsAllBranches(repo, auth.username, startUtc, endUtc, ctx.headers)
       for (const c of branchCommits) dedupAdd(repo, c.sha, c.message)
     })
   )
@@ -174,7 +150,6 @@ export async function GET(request: Request) {
 
   if (byRepo.size === 0) return NextResponse.json({ suggestions: [] })
 
-  // Saved mappings — repos already linked to project/task
   const repoNames = Array.from(byRepo.keys())
   const mappings = await prisma.repoMapping.findMany({
     where: { userId: session.user.id, repoFullName: { in: repoNames } },
@@ -183,6 +158,7 @@ export async function GET(request: Request) {
 
   const suggestions: SuggestedEntry[] = Array.from(byRepo.entries()).map(([repo, items]) => {
     const m = mapByRepo.get(repo)
+    const realCommits = items.filter(isRealCommit)
     return {
       repo,
       commitCount: items.length,
@@ -191,16 +167,14 @@ export async function GET(request: Request) {
       projectName: m?.projectName ?? '',
       taskId: m?.taskId ?? null,
       taskName: m?.taskName ?? '',
-      description: items
-        .filter((c) => c.sha !== 'create' && !c.sha.startsWith('pr-') && !c.sha.startsWith('iss-'))
+      description: realCommits
         .map((c) => `- ${c.message.split('\n').map((l, i) => i === 0 ? l : `  ${l}`).join('\n')}`)
         .join('\n\n'),
-      commits: items.filter((c) => c.sha !== 'create' && !c.sha.startsWith('pr-') && !c.sha.startsWith('iss-')).map((c) => c.message),
+      commits: realCommits.map((c) => c.message),
       isPersonal: false,
     }
   })
 
-  // Sort: mapped first, then by commit count
   suggestions.sort((a, b) => {
     const am = a.projectId !== null
     const bm = b.projectId !== null

@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildStyleBlock, istDayUtcRange, utcInstantToIstDate } from '@/lib/utils'
 import { aiComplete, aiConfigFromSettings } from '@/lib/ai'
-import { fetchCommitsAllBranches } from '@/lib/github'
+import { getGithubContext, fetchCommitsAllBranches } from '@/lib/github'
 
 interface IssueItem { type: 'pr' | 'issue'; repo: string; number: number; title: string }
 
@@ -14,30 +14,31 @@ export async function POST(request: Request) {
 
   const { projectName, taskName, hint, hours, date, useGithub, wordCount } = await request.json()
 
-  // Lookup user settings
-  let styleBlock = ''
-  let aiConfig = aiConfigFromSettings(null)
-  try {
-    const settings = await prisma.userSettings.findUnique({
-      where: { userId: session.user.id },
-      select: { descriptionStyle: true, aiProvider: true, openrouterApiKey: true, openrouterModel: true, geminiApiKey: true, geminiModel: true },
-    })
-    styleBlock = buildStyleBlock(settings?.descriptionStyle)
-    aiConfig = aiConfigFromSettings(settings ?? null)
-  } catch { /* skip */ }
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId: session.user.id },
+    select: { descriptionStyle: true, aiProvider: true, openrouterApiKey: true, openrouterModel: true, geminiApiKey: true, geminiModel: true },
+  }).catch(() => null)
+  const styleBlock = buildStyleBlock(settings?.descriptionStyle)
+  const aiConfig = aiConfigFromSettings(settings ?? null)
 
   let githubBlock = ''
   if (useGithub && date) {
     try {
-      const auth = await prisma.githubAuth.findUnique({ where: { userId: session.user.id } })
-      if (auth) {
+      const ctx = await getGithubContext(session.user.id)
+      if (ctx) {
+        const { auth, headers } = ctx
         console.log('[ai/describe] github user:', auth.username, '| date:', date)
-        const headers = { Authorization: `Bearer ${auth.accessToken}`, Accept: 'application/vnd.github+json' }
         const { startUtc: aStart, endUtc: aEnd } = istDayUtcRange(date)
 
-        // Discover repos touched on this date via events (covers all branches)
-        const eventsRes = await fetch(`https://api.github.com/user/events?per_page=100`, { headers })
-        const eventsData = eventsRes.ok ? await eventsRes.json() : []
+        const [eventsRes, issueRes] = await Promise.all([
+          fetch(`https://api.github.com/user/events?per_page=100`, { headers }),
+          fetch(`https://api.github.com/search/issues?q=author:${auth.username}+created:${aStart}..${aEnd}&per_page=20`, { headers }),
+        ])
+        const [eventsData, issueData] = await Promise.all([
+          eventsRes.ok ? eventsRes.json() : [],
+          issueRes.ok ? issueRes.json() : { items: [] },
+        ])
+
         const reposFromEvents = new Set<string>()
         if (Array.isArray(eventsData)) {
           for (const ev of eventsData as Array<{ type: string; created_at: string; repo: { name: string } }>) {
@@ -47,20 +48,14 @@ export async function POST(request: Request) {
           }
         }
 
-        // Fetch all-branch commits for each discovered repo in parallel
         const allCommits = (
           await Promise.all(
             Array.from(reposFromEvents).map((repo) =>
-              fetchCommitsAllBranches(repo, auth.username, aStart, aEnd, auth.accessToken)
+              fetchCommitsAllBranches(repo, auth.username, aStart, aEnd, headers)
             )
           )
         ).flat()
-        console.log('[ai/describe] all-branch commits:', allCommits.length, '| repos:', reposFromEvents.size)
 
-        // PRs/Issues via search (cross-repo, these aren't branch-specific)
-        const issueUrl = `https://api.github.com/search/issues?q=author:${auth.username}+created:${aStart}..${aEnd}&per_page=20`
-        const issueRes = await fetch(issueUrl, { headers })
-        const issueData = issueRes.ok ? await issueRes.json() : {}
         const issues: IssueItem[] = (issueData.items || []).map((i: { pull_request?: unknown; repository_url: string; number: number; title: string }) => ({
           type: (i.pull_request ? 'pr' : 'issue') as 'pr' | 'issue',
           repo: i.repository_url.replace('https://api.github.com/repos/', ''),

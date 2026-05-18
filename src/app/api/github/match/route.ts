@@ -4,7 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildStyleBlock, istDayUtcRange } from '@/lib/utils'
 import { aiComplete, aiConfigFromSettings, type AiConfig } from '@/lib/ai'
-import { fetchCommitsAllBranches } from '@/lib/github'
+import { getGithubContext, fetchCommitsAllBranches } from '@/lib/github'
 
 async function aiPick(prompt: string, label: string, config: AiConfig): Promise<string> {
   console.log(`[github/match][${label}] PROMPT:\n` + prompt + '\n--- END PROMPT ---')
@@ -25,30 +25,32 @@ export async function POST(request: Request) {
   const { repo, date, hours } = await request.json()
   if (!repo || !date) return NextResponse.json({ error: 'repo and date required' }, { status: 400 })
 
-  const auth = await prisma.githubAuth.findUnique({ where: { userId: session.user.id } })
-  if (!auth) return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 })
+  const [ctx, settings] = await Promise.all([
+    getGithubContext(session.user.id),
+    prisma.userSettings.findUnique({
+      where: { userId: session.user.id },
+      select: { descriptionStyle: true, aiProvider: true, openrouterApiKey: true, openrouterModel: true, geminiApiKey: true, geminiModel: true },
+    }),
+  ])
+  if (!ctx) return NextResponse.json({ error: 'GitHub not connected' }, { status: 400 })
+  const { auth, headers } = ctx
 
-  const settings = await prisma.userSettings.findUnique({
-    where: { userId: session.user.id },
-    select: { descriptionStyle: true, aiProvider: true, openrouterApiKey: true, openrouterModel: true, geminiApiKey: true, geminiModel: true },
-  })
   const aiConfig = aiConfigFromSettings(settings ?? null)
 
   const { startUtc, endUtc } = istDayUtcRange(date)
   console.log('[github/match] fetching all branches for repo:', repo, '| date:', date)
-  const commits = await fetchCommitsAllBranches(repo, auth.username, startUtc, endUtc, auth.accessToken)
+  const [commits, mapping] = await Promise.all([
+    fetchCommitsAllBranches(repo, auth.username, startUtc, endUtc, headers),
+    prisma.repoMapping.findUnique({
+      where: { userId_repoFullName: { userId: session.user.id, repoFullName: repo } },
+    }),
+  ])
   console.log('[github/match] commits found across all branches:', commits.length)
 
   const commitsText = commits
     .map((c) => `Commit ${c.sha.slice(0, 7)}:\n${c.message.trim()}`)
     .join('\n\n---\n\n')
 
-  // Saved mapping?
-  const mapping = await prisma.repoMapping.findUnique({
-    where: { userId_repoFullName: { userId: session.user.id, repoFullName: repo } },
-  })
-
-  // Project/task: only from saved mapping, no AI matching
   const projectId: number | null = mapping?.projectId ?? null
   const projectName = mapping?.projectName ?? ''
   const taskId: number | null = mapping?.taskId ?? null
@@ -57,7 +59,6 @@ export async function POST(request: Request) {
 
   const styleBlock = buildStyleBlock(settings?.descriptionStyle)
 
-  // Generate professional description from commits
   const descPrompt = `Summarize the functional outcomes of the day's work as a polished changelog paragraph.
 
 Repo: ${repo}
