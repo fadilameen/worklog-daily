@@ -48,6 +48,13 @@ type Suggestion = {
   isPersonal?: boolean
 }
 
+interface RecentTask {
+  projectId: number
+  projectName: string
+  taskId: number
+  taskName: string
+}
+
 interface OdooRecord {
   id: number
   name: string
@@ -105,7 +112,7 @@ export default function DashboardPage() {
   const [suggestionsDate, setSuggestionsDate] = useState<string>('')
   const [loadingSuggestions, setLoadingSuggestions] = useState(false)
   const [recentProjects, setRecentProjects] = useState<number[]>([])
-  const [recentTasksByProject, setRecentTasksByProject] = useState<Record<string, number[]>>({})
+  const [recentTasks, setRecentTasks] = useState<RecentTask[]>([])
   const [wordCountMode, setWordCountMode] = useState<'short' | 'concise' | 'detailed' | 'none'>('concise')
   const [wordCounts, setWordCounts] = useState({ short: 20, concise: 70, detailed: 110 })
 
@@ -160,7 +167,7 @@ export default function DashboardPage() {
       .then((r) => r.json())
       .then((d) => {
         setRecentProjects(d.recentProjects || [])
-        setRecentTasksByProject(d.recentTasksByProject || {})
+        setRecentTasks(d.recentTasks || [])
       })
       .catch(() => {})
   }, [session])
@@ -214,6 +221,35 @@ export default function DashboardPage() {
         return { ...e, taskId, taskName: task?.name || '' }
       })
     )
+  }
+
+  const handleRecentTaskPick = async (id: string, recent: RecentTask) => {
+    updateEntry(id, {
+      projectId: recent.projectId,
+      projectName: recent.projectName,
+      taskId: recent.taskId,
+      taskName: recent.taskName,
+      tasks: [{ id: recent.taskId, name: recent.taskName }],
+      loadingTasks: true,
+    })
+    try {
+      const res = await fetch(`/api/odoo/tasks?projectId=${recent.projectId}`)
+      const tasks: OdooRecord[] = res.ok ? await res.json() : []
+      const currentTask = tasks.find((t) => t.id === recent.taskId)
+      if (!currentTask) {
+        toast.warning(`Task "${recent.taskName}" no longer exists in Odoo. Pick another.`)
+        updateEntry(id, { tasks, loadingTasks: false, taskId: null, taskName: '' })
+        return
+      }
+      updateEntry(id, {
+        tasks,
+        loadingTasks: false,
+        taskName: currentTask.name,
+        projectName: projects.find((p) => p.id === recent.projectId)?.name || recent.projectName,
+      })
+    } catch {
+      updateEntry(id, { loadingTasks: false })
+    }
   }
 
   const generateDescription = async (id: string) => {
@@ -629,23 +665,35 @@ export default function DashboardPage() {
                     Task
                   </Label>
                   <Combobox
-                    items={entry.tasks.map((t) => ({ value: t.id.toString(), label: t.name }))}
+                    items={
+                      entry.projectId
+                        ? entry.tasks.map((t) => ({ value: t.id.toString(), label: t.name }))
+                        : recentTasks.map((t) => ({ value: `${t.projectId}:${t.taskId}`, label: `${t.taskName} · ${t.projectName}` }))
+                    }
                     value={entry.taskId?.toString() || null}
-                    onChange={(v) => handleTaskChange(entry.id, Number(v))}
-                    disabled={!entry.projectId || entry.loadingTasks}
+                    onChange={(v) => {
+                      if (typeof v === 'string' && v.includes(':')) {
+                        const [pid, tid] = v.split(':').map(Number)
+                        const recent = recentTasks.find((t) => t.projectId === pid && t.taskId === tid)
+                        if (recent) handleRecentTaskPick(entry.id, recent)
+                      } else {
+                        handleTaskChange(entry.id, Number(v))
+                      }
+                    }}
+                    disabled={entry.loadingTasks}
                     placeholder={
                       entry.loadingTasks
                         ? 'Loading tasks…'
-                        : !entry.projectId
-                        ? 'Select project first'
-                        : 'Select task…'
+                        : entry.projectId
+                        ? 'Select task…'
+                        : 'Search recent tasks or pick a project first'
                     }
                     searchPlaceholder="Search tasks…"
                     emptyText="No task found."
                     recentValues={
                       entry.projectId
-                        ? (recentTasksByProject[entry.projectId.toString()] || []).map((id) => id.toString())
-                        : []
+                        ? recentTasks.filter((t) => t.projectId === entry.projectId).map((t) => t.taskId.toString())
+                        : recentTasks.map((t) => `${t.projectId}:${t.taskId}`)
                     }
                   />
                 </div>
