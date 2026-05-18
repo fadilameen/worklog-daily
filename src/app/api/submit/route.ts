@@ -22,6 +22,10 @@ interface SubmitBody {
   entries: TimesheetEntry[]
   pushOdoo?: boolean
   sendEmail?: boolean
+  customHtml?: string
+  customSubject?: string
+  customTo?: string[]
+  customCc?: string[]
 }
 
 export async function POST(request: Request) {
@@ -29,7 +33,7 @@ export async function POST(request: Request) {
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body: SubmitBody = await request.json()
-  const { date, entries, pushOdoo = true, sendEmail = true } = body
+  const { date, entries, pushOdoo = true, sendEmail = true, customHtml, customSubject, customTo, customCc } = body
   if (!entries?.length) return NextResponse.json({ error: 'No entries' }, { status: 400 })
   if (!pushOdoo && !sendEmail) return NextResponse.json({ error: 'Select at least one action' }, { status: 400 })
 
@@ -80,8 +84,8 @@ export async function POST(request: Request) {
   }
 
   if (sendEmail) {
-    const recipients = parseEmailList(settings.emailRecipients)
-    const cc = parseEmailList(settings.emailCc)
+    const recipients = customTo !== undefined ? customTo : parseEmailList(settings.emailRecipients)
+    const cc = customCc !== undefined ? customCc : parseEmailList(settings.emailCc)
     const bcc = parseEmailList(settings.emailBcc)
 
     if (recipients.length === 0) {
@@ -102,6 +106,8 @@ export async function POST(request: Request) {
           date,
           entries,
           signatureFields: extractSignatureFields(settings),
+          customHtml,
+          customSubject,
         })
         results.emailSent = true
       } catch (e: unknown) {

@@ -1,17 +1,5 @@
 import { renderSignature, escapeHtml, type SignatureFields } from '@/lib/signature-template'
 
-function buildSignatureHtml(signatureFields: Partial<SignatureFields> | undefined, userName: string, userEmail: string): string {
-  return renderSignature({
-    name: signatureFields?.name || userName,
-    email: signatureFields?.email || userEmail,
-    designation: signatureFields?.designation,
-    department: signatureFields?.department,
-    company: signatureFields?.company,
-    phone: signatureFields?.phone,
-    whatsapp: signatureFields?.whatsapp,
-  })
-}
-
 interface TimesheetEntry {
   projectName: string
   taskName: string
@@ -46,13 +34,11 @@ export function formatEmailDate(isoDate: string): string {
 }
 
 export function buildEmailHtml(params: {
-  userName: string
-  userEmail: string
   date: string
   entries: TimesheetEntry[]
   signatureFields?: Partial<SignatureFields>
 }) {
-  const { userName, userEmail, date, entries, signatureFields } = params
+  const { date, entries, signatureFields } = params
   const formattedDate = formatEmailDate(date)
 
   // Sort: Completed first, Ongoing last
@@ -109,7 +95,7 @@ export function buildEmailHtml(params: {
       </tbody>
     </table>
   </div>
-  <div dir="ltr"><br><br>${buildSignatureHtml(signatureFields, userName, userEmail)}</div>
+  <div dir="ltr"><br><br>${renderSignature(signatureFields)}</div>
 </div>`
 }
 
@@ -141,13 +127,15 @@ export async function sendWorkReport(params: {
   date: string
   entries: TimesheetEntry[]
   signatureFields?: Partial<SignatureFields>
+  customHtml?: string
+  customSubject?: string
 }) {
-  const { userEmail, userName, subjectName, recipients, cc = [], bcc = [], date, entries, signatureFields } = params
+  const { userEmail, userName, subjectName, recipients, cc = [], bcc = [], date, entries, signatureFields, customHtml, customSubject } = params
   let { accessToken } = params
 
   const formattedDate = formatEmailDate(date)
-  const html = buildEmailHtml({ userName, userEmail, date, entries, signatureFields })
-  const subject = `Daily Work Report_${formattedDate}_${(subjectName || userName).toUpperCase()}`
+  const html = customHtml ?? buildEmailHtml({ date, entries, signatureFields })
+  const subject = customSubject || `Daily Work Report_${formattedDate}_${(subjectName || userName).toUpperCase()}`
 
   const headers: string[] = [
     `From: "${userName}" <${userEmail}>`,
@@ -192,13 +180,11 @@ interface WeeklyEntry {
 }
 
 export function buildWeeklyEmailHtml(params: {
-  userName: string
-  userEmail: string
   weekLabel: string
   entries: WeeklyEntry[]
   signatureFields?: Partial<SignatureFields>
 }) {
-  const { userName, userEmail, weekLabel, entries, signatureFields } = params
+  const { weekLabel, entries, signatureFields } = params
 
   const sorted = [...entries].sort((a, b) => {
     const sa = STATUS_ORDER[a.status || ''] ?? 99
@@ -247,7 +233,7 @@ export function buildWeeklyEmailHtml(params: {
       </tbody>
     </table>
   </div>
-  <div dir="ltr"><br><br>${buildSignatureHtml(signatureFields, userName, userEmail)}</div>
+  <div dir="ltr"><br><br>${renderSignature(signatureFields)}</div>
 </div>`
 }
 
@@ -267,7 +253,7 @@ export async function sendWeeklyWorkReport(params: {
   const { userEmail, userName, subjectName, recipients, cc = [], bcc = [], weekLabel, entries, signatureFields } = params
   let { accessToken } = params
 
-  const html = buildWeeklyEmailHtml({ userName, userEmail, weekLabel, entries, signatureFields })
+  const html = buildWeeklyEmailHtml({ weekLabel, entries, signatureFields })
   const subject = `Weekly Work Report_${weekLabel}_${(subjectName || userName).toUpperCase()}`
 
   const headers: string[] = [

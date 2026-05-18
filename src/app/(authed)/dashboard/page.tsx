@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -32,6 +32,7 @@ import {
 import { Eye, Search } from 'lucide-react'
 import { GithubIcon } from '@/components/icons'
 import { ManualRepoPicker } from '@/components/ManualRepoPicker'
+import { RecipientChips } from '@/components/recipient-chips'
 import { STATUSES, STATUS_BG, STATUS_FG } from '@/lib/status'
 import { formatDate, cn } from '@/lib/utils'
 
@@ -242,7 +243,7 @@ export default function DashboardPage() {
     }
   }
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (override?: { customHtml?: string; customSubject?: string; customTo?: string[]; customCc?: string[] }) => {
     const valid = entries.filter(
       (e) => e.projectId && e.taskId && e.hours > 0 && e.description.trim()
     )
@@ -270,7 +271,7 @@ export default function DashboardPage() {
       const res = await fetch('/api/submit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ date, entries: cleanEntries, pushOdoo, sendEmail }),
+        body: JSON.stringify({ date, entries: cleanEntries, pushOdoo, sendEmail, ...(override || {}) }),
       })
       const data = await res.json()
 
@@ -378,6 +379,27 @@ export default function DashboardPage() {
   const [previewHtml, setPreviewHtml] = useState('')
   const [previewMeta, setPreviewMeta] = useState<{ subject: string; to: string[]; cc: string[]; bcc: string[] } | null>(null)
   const [loadingPreview, setLoadingPreview] = useState(false)
+  const editablePreviewRef = useRef<HTMLIFrameElement>(null)
+  const [editableSubject, setEditableSubject] = useState('')
+  const [editableTo, setEditableTo] = useState<string[]>([])
+  const [editableCc, setEditableCc] = useState<string[]>([])
+  const [toInput, setToInput] = useState('')
+  const [ccInput, setCcInput] = useState('')
+
+  useEffect(() => {
+    if (!loadingPreview && previewHtml && previewMeta && editablePreviewRef.current) {
+      const doc = editablePreviewRef.current.contentDocument
+      if (doc) {
+        doc.open()
+        doc.write(previewHtml)
+        doc.close()
+        doc.body.contentEditable = 'true'
+      }
+      setEditableSubject(previewMeta.subject)
+      setEditableTo(previewMeta.to)
+      setEditableCc(previewMeta.cc)
+    }
+  }, [loadingPreview, previewHtml, previewMeta])
 
   const openPreview = async () => {
     const valid = entries.filter(
@@ -791,7 +813,7 @@ export default function DashboardPage() {
         </div>
 
         <Button
-          onClick={sendEmail ? openPreview : handleSubmit}
+          onClick={sendEmail ? openPreview : () => handleSubmit()}
           disabled={submitting || (!pushOdoo && !sendEmail)}
           size="lg"
           className="mt-5 w-full gap-2 bg-accent text-accent-foreground hover:opacity-90"
@@ -837,26 +859,41 @@ export default function DashboardPage() {
               This is what your team will see. {pushOdoo && 'Odoo timesheet entries will also be created.'}
             </DialogDescription>
           </DialogHeader>
-          {previewMeta && !loadingPreview && (
-            <div className="rounded-md border border-border bg-muted/40 px-4 py-3 text-xs font-mono space-y-1">
-              <div className="flex gap-2"><span className="text-muted-foreground w-14 shrink-0">Subject</span><span className="text-foreground break-all">{previewMeta.subject}</span></div>
-              <div className="flex gap-2"><span className="text-muted-foreground w-14 shrink-0">To</span><span className="text-foreground">{previewMeta.to.join(', ') || '—'}</span></div>
-              {previewMeta.cc.length > 0 && <div className="flex gap-2"><span className="text-muted-foreground w-14 shrink-0">CC</span><span className="text-foreground">{previewMeta.cc.join(', ')}</span></div>}
-              {previewMeta.bcc.length > 0 && <div className="flex gap-2"><span className="text-muted-foreground w-14 shrink-0">BCC</span><span className="text-foreground">{previewMeta.bcc.join(', ')}</span></div>}
-            </div>
-          )}
-          <div className="flex-1 overflow-hidden rounded-md border border-border bg-white">
+          <div className="flex-1 overflow-hidden rounded-md border border-border bg-white text-black flex flex-col">
             {loadingPreview ? (
               <div className="flex h-72 items-center justify-center">
                 <Loader2 className="h-5 w-5 animate-spin text-accent" />
               </div>
             ) : (
-              <iframe
-                title="Email preview"
-                srcDoc={previewHtml}
-                sandbox=""
-                className="h-[60vh] w-full bg-white"
-              />
+              <>
+                <RecipientChips
+                  label="To"
+                  emails={editableTo}
+                  onAdd={(e) => setEditableTo((prev) => prev.includes(e) ? prev : [...prev, e])}
+                  onRemove={(e) => setEditableTo((prev) => prev.filter((x) => x !== e))}
+                  inputValue={toInput}
+                  setInputValue={setToInput}
+                />
+                <RecipientChips
+                  label="Cc"
+                  emails={editableCc}
+                  onAdd={(e) => setEditableCc((prev) => prev.includes(e) ? prev : [...prev, e])}
+                  onRemove={(e) => setEditableCc((prev) => prev.filter((x) => x !== e))}
+                  inputValue={ccInput}
+                  setInputValue={setCcInput}
+                />
+                <input
+                  value={editableSubject}
+                  onChange={(e) => setEditableSubject(e.target.value)}
+                  className="border-b border-gray-200 bg-white px-3 py-2 text-sm text-black outline-none"
+                  placeholder="Subject"
+                />
+                <iframe
+                  ref={editablePreviewRef}
+                  title="Email preview"
+                  className="flex-1 w-full bg-white min-h-[40vh]"
+                />
+              </>
             )}
           </div>
           <DialogFooter className="gap-2">
@@ -865,8 +902,9 @@ export default function DashboardPage() {
             </Button>
             <Button
               onClick={() => {
+                const editedHtml = editablePreviewRef.current?.contentDocument?.body?.innerHTML || previewHtml
                 setPreviewOpen(false)
-                handleSubmit()
+                handleSubmit({ customHtml: editedHtml, customSubject: editableSubject, customTo: editableTo, customCc: editableCc })
               }}
               disabled={submitting || loadingPreview}
               className="gap-2 bg-accent text-accent-foreground hover:opacity-90"

@@ -29,8 +29,6 @@ export async function POST(request: Request) {
   const subjectName = settings?.displayName || userName
 
   const html = buildEmailHtml({
-    userName,
-    userEmail: session.user.email || '',
     date,
     entries,
     signatureFields: extractSignatureFields(settings),

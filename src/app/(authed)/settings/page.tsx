@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Combobox } from '@/components/ui/combobox'
-import { renderSignature, SIGNATURE_DEFAULTS } from '@/lib/signature-template'
+import { renderSignature, SIGNATURE_PLACEHOLDERS } from '@/lib/signature-template'
 
 interface Settings {
   displayName: string
@@ -44,13 +44,13 @@ interface Settings {
 }
 
 const SIGNATURE_FIELD_CONFIG: { key: keyof Settings; label: string; placeholder: string }[] = [
-  { key: 'signatureName', label: 'Name', placeholder: 'John Doe' },
-  { key: 'signatureDesignation', label: 'Designation', placeholder: SIGNATURE_DEFAULTS.designation },
-  { key: 'signatureDepartment', label: 'Department', placeholder: SIGNATURE_DEFAULTS.department },
-  { key: 'signatureCompany', label: 'Company', placeholder: SIGNATURE_DEFAULTS.company },
-  { key: 'signatureEmail', label: 'Email', placeholder: 'john@example.com' },
-  { key: 'signaturePhone', label: 'Mobile', placeholder: '+91 98765 43210' },
-  { key: 'signatureWhatsapp', label: 'WhatsApp', placeholder: '+91 98765 43210' },
+  { key: 'signatureName', label: 'Name', placeholder: SIGNATURE_PLACEHOLDERS.name },
+  { key: 'signatureDesignation', label: 'Designation', placeholder: SIGNATURE_PLACEHOLDERS.designation },
+  { key: 'signatureDepartment', label: 'Department', placeholder: SIGNATURE_PLACEHOLDERS.department },
+  { key: 'signatureCompany', label: 'Company', placeholder: SIGNATURE_PLACEHOLDERS.company },
+  { key: 'signatureEmail', label: 'Email', placeholder: SIGNATURE_PLACEHOLDERS.email },
+  { key: 'signaturePhone', label: 'Mobile', placeholder: SIGNATURE_PLACEHOLDERS.phone },
+  { key: 'signatureWhatsapp', label: 'WhatsApp', placeholder: SIGNATURE_PLACEHOLDERS.whatsapp },
 ]
 
 const defaults: Settings = {
@@ -110,7 +110,11 @@ export default function SettingsPage() {
         if (!r.ok) return
         const data = await r.json()
         if (data && !data.error) {
-          setSettings({ ...defaults, ...data })
+          const merged = { ...defaults, ...data }
+          for (const { key, placeholder } of SIGNATURE_FIELD_CONFIG) {
+            if (!merged[key]) merged[key] = placeholder
+          }
+          setSettings(merged)
           setOdooVerified(!!data.odooUrl && !!data.odooUsername)
         }
       })
@@ -121,11 +125,11 @@ export default function SettingsPage() {
     setSettings((prev) => ({ ...prev, [key]: value }))
 
   const signaturePreviewHtml = useMemo(() => renderSignature({
-    name: settings.signatureName || 'John Doe',
+    name: settings.signatureName,
     designation: settings.signatureDesignation,
     department: settings.signatureDepartment,
     company: settings.signatureCompany,
-    email: settings.signatureEmail || 'john@example.com',
+    email: settings.signatureEmail,
     phone: settings.signaturePhone,
     whatsapp: settings.signatureWhatsapp,
   }), [
