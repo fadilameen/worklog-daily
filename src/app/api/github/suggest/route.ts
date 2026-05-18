@@ -33,10 +33,11 @@ export async function GET(request: Request) {
   const { startUtc, endUtc } = istDayUtcRange(date)
   const searchUrl = `https://api.github.com/search/commits?q=author:${auth.username}+author-date:${startUtc}..${endUtc}&per_page=100`
 
-  const [searchRes, eventsRes, userEventsRes] = await Promise.all([
+  const [searchRes, eventsRes, userEventsRes, allMappings] = await Promise.all([
     fetch(searchUrl, { headers: { ...headers, Accept: 'application/vnd.github.cloak-preview+json' } }),
     fetch(`https://api.github.com/users/${auth.username}/events?per_page=100`, { headers }),
     fetch(`https://api.github.com/user/events?per_page=100`, { headers }),
+    prisma.repoMapping.findMany({ where: { userId: session.user.id } }),
   ])
 
   const searchData = searchRes.ok ? await searchRes.json() : { items: [] }
@@ -138,10 +139,10 @@ export async function GET(request: Request) {
     if (!items.some(isRealCommit)) byRepo.delete(repo)
   }
 
-  // events only show last 300 events; search only indexes default branch
-  const reposWithCommits = Array.from(byRepo.keys())
+  // events only show last 300 events; search only indexes default branch; mapped repos are always checked to catch both
+  const reposToCheck = [...new Set([...byRepo.keys(), ...allMappings.map((m) => m.repoFullName)])]
   await Promise.all(
-    reposWithCommits.map(async (repo) => {
+    reposToCheck.map(async (repo) => {
       const branchCommits = await fetchCommitsAllBranches(repo, auth.username, startUtc, endUtc, ctx.headers)
       for (const c of branchCommits) dedupAdd(repo, c.sha, c.message)
     })
@@ -150,11 +151,7 @@ export async function GET(request: Request) {
 
   if (byRepo.size === 0) return NextResponse.json({ suggestions: [] })
 
-  const repoNames = Array.from(byRepo.keys())
-  const mappings = await prisma.repoMapping.findMany({
-    where: { userId: session.user.id, repoFullName: { in: repoNames } },
-  })
-  const mapByRepo = new Map(mappings.map((m) => [m.repoFullName, m]))
+  const mapByRepo = new Map(allMappings.map((m) => [m.repoFullName, m]))
 
   const suggestions: SuggestedEntry[] = Array.from(byRepo.entries()).map(([repo, items]) => {
     const m = mapByRepo.get(repo)
