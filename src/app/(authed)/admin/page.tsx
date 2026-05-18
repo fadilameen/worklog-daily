@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { Loader2, Users, Send, GitBranch, Calendar, CheckCircle2, XCircle, Ban, ShieldCheck, Trash2 } from 'lucide-react'
@@ -44,18 +44,18 @@ export default function AdminPage() {
     if (status === 'unauthenticated') router.push('/')
   }, [status, router])
 
-  useEffect(() => {
-    if (status !== 'authenticated') return
-    refresh()
-  }, [status])
-
-  const refresh = () => {
+  const refresh = useCallback(() => {
     setLoading(true)
     fetch('/api/admin/overview')
       .then((r) => r.json())
       .then((d) => { if (!d.error) setData(d) })
       .finally(() => setLoading(false))
-  }
+  }, [])
+
+  useEffect(() => {
+    if (status !== 'authenticated') return
+    refresh()
+  }, [status, refresh])
 
   const runUserAction = async (
     id: string,

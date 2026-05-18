@@ -35,6 +35,7 @@ import { ManualRepoPicker } from '@/components/ManualRepoPicker'
 import { RecipientChips } from '@/components/recipient-chips'
 import { STATUSES, STATUS_BG, STATUS_FG } from '@/lib/status'
 import { formatDate, cn } from '@/lib/utils'
+import { PREFILL_STORAGE_KEY, type PrefillEntry } from '@/lib/prefill-entry'
 
 type Suggestion = {
   repo: string
@@ -190,9 +191,9 @@ export default function DashboardPage() {
       .catch(() => {})
   }, [session])
 
-  const updateEntry = (id: string, patch: Partial<TimesheetEntry>) => {
+  const updateEntry = useCallback((id: string, patch: Partial<TimesheetEntry>) => {
     setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)))
-  }
+  }, [])
 
   const handleProjectChange = async (id: string, projectId: number) => {
     const project = projects.find((p) => p.id === projectId)
@@ -223,7 +224,53 @@ export default function DashboardPage() {
     )
   }
 
-  const handleRecentTaskPick = async (id: string, recent: RecentTask) => {
+  const verifyTaskInProject = useCallback(async (entryId: string, projectId: number, taskId: number, fallbackTaskName: string, fallbackProjectName: string) => {
+    try {
+      const res = await fetch(`/api/odoo/tasks?projectId=${projectId}`)
+      const tasks: OdooRecord[] = res.ok ? await res.json() : []
+      const currentTask = tasks.find((t) => t.id === taskId)
+      if (!currentTask) {
+        toast.warning(`Task "${fallbackTaskName}" no longer exists in Odoo. Pick another.`)
+        updateEntry(entryId, { tasks, loadingTasks: false, taskId: null, taskName: '' })
+        return
+      }
+      updateEntry(entryId, {
+        tasks,
+        loadingTasks: false,
+        taskName: currentTask.name,
+        projectName: projects.find((p) => p.id === projectId)?.name || fallbackProjectName,
+      })
+    } catch {
+      updateEntry(entryId, { loadingTasks: false })
+    }
+  }, [projects, updateEntry])
+
+  // Apply prefill from history duplicate (sessionStorage)
+  useEffect(() => {
+    if (!session) return
+    const raw = sessionStorage.getItem(PREFILL_STORAGE_KEY)
+    if (!raw) return
+    sessionStorage.removeItem(PREFILL_STORAGE_KEY)
+    try {
+      const p = JSON.parse(raw) as PrefillEntry
+      const filled: TimesheetEntry = {
+        ...makeEntry(),
+        projectId: p.projectId,
+        projectName: p.projectName,
+        taskId: p.taskId,
+        taskName: p.taskName,
+        hours: p.hours,
+        description: p.description,
+        status: p.status || 'Ongoing',
+        tasks: [{ id: p.taskId, name: p.taskName }],
+        loadingTasks: true,
+      }
+      setEntries([filled])
+      verifyTaskInProject(filled.id, p.projectId, p.taskId, p.taskName, p.projectName)
+    } catch { /* skip */ }
+  }, [session, verifyTaskInProject])
+
+  const handleRecentTaskPick = (id: string, recent: RecentTask) => {
     updateEntry(id, {
       projectId: recent.projectId,
       projectName: recent.projectName,
@@ -232,24 +279,7 @@ export default function DashboardPage() {
       tasks: [{ id: recent.taskId, name: recent.taskName }],
       loadingTasks: true,
     })
-    try {
-      const res = await fetch(`/api/odoo/tasks?projectId=${recent.projectId}`)
-      const tasks: OdooRecord[] = res.ok ? await res.json() : []
-      const currentTask = tasks.find((t) => t.id === recent.taskId)
-      if (!currentTask) {
-        toast.warning(`Task "${recent.taskName}" no longer exists in Odoo. Pick another.`)
-        updateEntry(id, { tasks, loadingTasks: false, taskId: null, taskName: '' })
-        return
-      }
-      updateEntry(id, {
-        tasks,
-        loadingTasks: false,
-        taskName: currentTask.name,
-        projectName: projects.find((p) => p.id === recent.projectId)?.name || recent.projectName,
-      })
-    } catch {
-      updateEntry(id, { loadingTasks: false })
-    }
+    return verifyTaskInProject(id, recent.projectId, recent.taskId, recent.taskName, recent.projectName)
   }
 
   const generateDescription = async (id: string) => {

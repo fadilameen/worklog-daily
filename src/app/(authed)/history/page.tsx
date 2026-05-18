@@ -3,12 +3,15 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, XCircle, FileText, Loader2 } from 'lucide-react'
+import { CheckCircle2, XCircle, FileText, Loader2, Copy } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { formatDisplayDate } from '@/lib/utils'
+import { PREFILL_STORAGE_KEY, type PrefillEntry } from '@/lib/prefill-entry'
 
 interface Entry {
+  projectId?: number
   projectName: string
+  taskId?: number
   taskName: string
   hours: number
   description: string
@@ -41,6 +44,21 @@ export default function HistoryPage() {
       .then(setSubmissions)
       .finally(() => setLoading(false))
   }, [session])
+
+  const duplicate = (e: Entry) => {
+    if (!e.projectId || !e.taskId) return
+    const payload: PrefillEntry = {
+      projectId: e.projectId,
+      projectName: e.projectName,
+      taskId: e.taskId,
+      taskName: e.taskName,
+      hours: e.hours,
+      description: e.description,
+      status: e.status,
+    }
+    sessionStorage.setItem(PREFILL_STORAGE_KEY, JSON.stringify(payload))
+    router.push('/dashboard')
+  }
 
   if (loading || status === 'loading') {
     return (
@@ -116,6 +134,14 @@ export default function HistoryPage() {
                       <span className="font-mono text-sm text-foreground shrink-0">
                         {e.hours}h
                       </span>
+                      <button
+                        onClick={() => duplicate(e)}
+                        disabled={!e.projectId || !e.taskId}
+                        title="Duplicate to dashboard"
+                        className="rounded-md border border-border bg-surface px-2 py-1 text-muted-foreground transition hover:text-accent disabled:opacity-40 disabled:cursor-not-allowed"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
                     </li>
                   ))}
                 </ul>
