@@ -147,7 +147,7 @@ export default function AdminPage() {
                         onClick={() => setSuspended(u.id, u.email, !u.suspended)}
                         title={u.suspended ? 'Unblock — restore sign-in access' : 'Block — sign out + prevent future sign-in'}
                         className={cn(
-                          'rounded-md border border-border bg-surface px-2 py-1 text-xs text-muted-foreground',
+                          'rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-muted-foreground',
                           u.suspended ? 'hover:text-accent' : 'hover:text-destructive'
                         )}
                       >
@@ -156,7 +156,7 @@ export default function AdminPage() {
                       <button
                         onClick={() => deleteUser(u.id, u.email)}
                         title="Delete account"
-                        className="rounded-md border border-border bg-surface px-2 py-1 text-xs text-muted-foreground hover:text-destructive"
+                        className="rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-muted-foreground hover:text-destructive"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>

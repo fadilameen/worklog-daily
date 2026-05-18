@@ -80,6 +80,18 @@ interface TimesheetEntry {
   __generatingFromGh?: boolean
 }
 
+function submitLabel(pushOdoo: boolean, sendEmail: boolean): string {
+  if (!pushOdoo && !sendEmail) return 'Select an action'
+  if (sendEmail) return 'Preview & send'
+  return 'Submit · Odoo only'
+}
+
+function previewSendLabel(pushOdoo: boolean, sendEmail: boolean): string {
+  if (pushOdoo && sendEmail) return 'Send · Odoo + Email'
+  if (sendEmail) return 'Send email'
+  return 'Submit'
+}
+
 function makeEntry(): TimesheetEntry {
   return {
     id: crypto.randomUUID(),
@@ -903,13 +915,7 @@ export default function DashboardPage() {
           ) : (
             <Send className="h-4 w-4" />
           )}
-          {submitting
-            ? 'Submitting…'
-            : !pushOdoo && !sendEmail
-            ? 'Select an action'
-            : sendEmail
-            ? 'Preview & send'
-            : 'Submit · Odoo only'}
+          {submitting ? 'Submitting…' : submitLabel(pushOdoo, sendEmail)}
         </Button>
       </div>
 
@@ -988,7 +994,7 @@ export default function DashboardPage() {
               className="gap-2 bg-accent text-accent-foreground hover:opacity-90"
             >
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              {pushOdoo && sendEmail ? 'Send · Odoo + Email' : sendEmail ? 'Send email' : 'Submit'}
+              {previewSendLabel(pushOdoo, sendEmail)}
             </Button>
           </DialogFooter>
         </DialogContent>

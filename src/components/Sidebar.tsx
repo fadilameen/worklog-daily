@@ -9,6 +9,7 @@ import { useTheme } from 'next-themes'
 import { cn } from '@/lib/utils'
 import { GoogleIcon, GithubIcon } from '@/components/icons'
 import { isAdmin } from '@/lib/admin'
+import { useGithubConnection } from '@/hooks/use-github-connection'
 
 const NAV = [
   { href: '/dashboard', label: 'Today', icon: CalendarDays },
@@ -24,28 +25,9 @@ export function Sidebar() {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const [github, setGithub] = useState<{ connected: boolean; username: string | null }>({
-    connected: false,
-    username: null,
-  })
+  const { connected: githubConnected, username: githubUsername, disconnect: disconnectGithub } = useGithubConnection()
 
   useEffect(() => { setMounted(true) }, [])
-
-  const refreshGithub = () => {
-    fetch('/api/github/status')
-      .then((r) => r.json())
-      .then((d) => setGithub({ connected: !!d.connected, username: d.username || null }))
-      .catch(() => {})
-  }
-
-  useEffect(() => {
-    if (session) refreshGithub()
-  }, [session])
-
-  const disconnectGithub = async () => {
-    await fetch('/api/github/status', { method: 'DELETE' })
-    refreshGithub()
-  }
 
   return (
     <aside className="hidden md:flex sticky top-0 h-screen w-60 shrink-0 flex-col border-r border-border bg-sidebar p-4 overflow-y-auto">
@@ -66,6 +48,7 @@ export function Sidebar() {
       <nav className="flex flex-col gap-1">
         {[...NAV, ...(isAdmin(session?.user?.email) ? [ADMIN_NAV] : [])].map(({ href, label, icon: Icon }) => {
           const active = pathname === href || pathname.startsWith(href + '/')
+          const isAdminLink = href === ADMIN_NAV.href
           return (
             <Link
               key={href}
@@ -78,7 +61,12 @@ export function Sidebar() {
               )}
             >
               <Icon className="h-4 w-4" />
-              {label}
+              <span className="flex-1">{label}</span>
+              {isAdminLink && (
+                <span className="rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-accent">
+                  Priv
+                </span>
+              )}
             </Link>
           )
         })}
@@ -105,10 +93,10 @@ export function Sidebar() {
             <div className="flex items-center gap-2 min-w-0">
               <GithubIcon className="h-3.5 w-3.5 shrink-0 text-foreground" />
               <span className="text-xs truncate">
-                {github.connected ? github.username : 'GitHub'}
+                {githubConnected ? githubUsername : 'GitHub'}
               </span>
             </div>
-            {github.connected ? (
+            {githubConnected ? (
               <div className="flex items-center gap-1.5 shrink-0">
                 <CheckCircle2 className="h-3.5 w-3.5 text-accent" />
                 <button

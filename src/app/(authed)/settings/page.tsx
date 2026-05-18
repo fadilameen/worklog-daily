@@ -4,7 +4,9 @@ import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { CheckCircle2, XCircle, KeyRound, Mail, Users, Loader2, Sparkles, Bot, ExternalLink } from 'lucide-react'
+import { CheckCircle2, XCircle, Plug2, Mail, Loader2, Sparkles, Bot, ExternalLink, Plus } from 'lucide-react'
+import { GithubIcon } from '@/components/icons'
+import { useGithubConnection } from '@/hooks/use-github-connection'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -98,6 +100,7 @@ export default function SettingsPage() {
   const [testResponse, setTestResponse] = useState('')
   const [testError, setTestError] = useState('')
   const [testingAi, setTestingAi] = useState(false)
+  const { connected: githubConnected, username: githubUsername, disconnect: disconnectGithub } = useGithubConnection()
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/')
@@ -158,7 +161,6 @@ export default function SettingsPage() {
     }
   }
 
-  // Fetch OpenRouter models (public endpoint, no key needed)
   useEffect(() => {
     if (settings.aiProvider !== 'openrouter' || orModels.length) return
     setLoadingOrModels(true)
@@ -177,7 +179,6 @@ export default function SettingsPage() {
       .finally(() => setLoadingOrModels(false))
   }, [settings.aiProvider, orModels.length])
 
-  // Fetch Gemini models when API key is available
   useEffect(() => {
     const key = settings.geminiApiKey.trim()
     if (settings.aiProvider !== 'gemini' || !key) return
@@ -264,47 +265,45 @@ export default function SettingsPage() {
     )
   }
 
+  const saveButton = (label = 'Save') => (
+    <Button onClick={save} disabled={saving}>
+      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : label}
+    </Button>
+  )
+
   return (
     <div className="mx-auto max-w-4xl px-4 py-6 sm:px-6 sm:py-10 lg:px-10 lg:py-14">
       <header>
         <p className="font-mono text-xs uppercase tracking-[0.2em] text-muted-foreground">Settings</p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight">Configuration</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Connect Odoo and configure who receives your daily report.
+          Connections, recipients, signature, and AI behavior in one place.
         </p>
       </header>
 
-      <Tabs defaultValue="odoo" className="mt-8">
+      <Tabs defaultValue="connections" className="mt-8">
         <TabsList className="flex h-12 w-full items-center justify-start gap-1 overflow-x-auto overflow-y-hidden rounded-lg bg-surface/60 p-1.5 text-muted-foreground [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-          <TabsTrigger value="odoo" className="gap-2 shrink-0 px-4 py-2">
-            <KeyRound className="h-4 w-4" /> Odoo
+          <TabsTrigger value="connections" className="gap-2 shrink-0 px-4 py-2">
+            <Plug2 className="h-4 w-4" /> Connections
           </TabsTrigger>
-          <TabsTrigger value="gmail" className="gap-2 shrink-0 px-4 py-2">
-            <Mail className="h-4 w-4" /> Gmail
-          </TabsTrigger>
-          <TabsTrigger value="recipients" className="gap-2 shrink-0 px-4 py-2">
-            <Users className="h-4 w-4" /> Recipients
+          <TabsTrigger value="email" className="gap-2 shrink-0 px-4 py-2">
+            <Mail className="h-4 w-4" /> Email
           </TabsTrigger>
           <TabsTrigger value="ai" className="gap-2 shrink-0 px-4 py-2">
             <Bot className="h-4 w-4" /> AI
           </TabsTrigger>
           <TabsTrigger value="style" className="gap-2 shrink-0 px-4 py-2">
-            <Sparkles className="h-4 w-4" /> AI Style
+            <Sparkles className="h-4 w-4" /> Style
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="odoo" className="mt-6">
+        <TabsContent value="connections" className="mt-6 space-y-6">
           <Card>
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Odoo connection</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Your personal Odoo credentials. Used to push timesheet entries.
-                </p>
-              </div>
-              <ConnStatus ok={odooVerified} okLabel="Verified" offLabel="Not verified" />
-            </div>
-
+            <CardHeader
+              title="Odoo connection"
+              subtitle="Personal Odoo credentials. Used to push timesheet entries."
+              status={<ConnStatus ok={odooVerified} okLabel="Verified" offLabel="Not verified" />}
+            />
             <div className="mt-6 grid gap-4 sm:grid-cols-2">
               <Field label="Server URL">
                 <Input value={settings.odooUrl} onChange={(e) => set('odooUrl', e.target.value)} placeholder="https://mycompany.odoo.com" />
@@ -319,90 +318,98 @@ export default function SettingsPage() {
                 <Input type="password" value={settings.odooPassword} onChange={(e) => set('odooPassword', e.target.value)} placeholder="••••••••" />
               </Field>
             </div>
-
             <div className="mt-6 flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">Test the connection before saving.</p>
+              <p className="text-xs text-muted-foreground">Test before saving.</p>
               <div className="flex gap-2">
                 <Button variant="outline" onClick={testOdoo} disabled={testingOdoo || !settings.odooUrl}>
                   {testingOdoo ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Test connection'}
                 </Button>
-                <Button onClick={save} disabled={saving}>
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-                </Button>
+                {saveButton()}
               </div>
             </div>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="gmail" className="mt-6">
           <Card>
-            <div className="flex items-start justify-between">
-              <div>
-                <h2 className="text-lg font-semibold">Gmail send access</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Reports are sent through your signed-in Gmail account.
-                </p>
-              </div>
-              <ConnStatus ok={!!session?.user?.email} okLabel="Connected" offLabel="Not connected" />
-            </div>
-
+            <CardHeader
+              title="Gmail send access"
+              subtitle="Reports send through your signed-in Gmail account. No SMTP setup needed."
+              status={<ConnStatus ok={!!session?.user?.email} okLabel="Connected" offLabel="Not connected" />}
+            />
             <div className="mt-6 flex items-center justify-between rounded-lg border border-border bg-surface/40 p-4">
               <div>
                 <p className="text-sm font-medium">{session?.user?.email}</p>
-                <p className="mt-1 font-mono text-xs text-muted-foreground">scope: gmail.send</p>
+                <p className="mt-1 font-mono text-xs text-muted-foreground">scope: gmail.send · gmail.readonly</p>
               </div>
               <span className="font-mono text-[11px] uppercase tracking-wider text-accent">via OAuth</span>
             </div>
-
-            <p className="mt-4 text-xs text-muted-foreground">
-              No SMTP setup needed. Sign out and back in to refresh access.
+            <p className="mt-3 text-xs text-muted-foreground">
+              Sign out and back in to refresh access if Gmail send starts failing.
             </p>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="GitHub"
+              subtitle="Pulls your daily commits to seed report drafts and AI descriptions."
+              status={<ConnStatus ok={githubConnected} okLabel="Connected" offLabel="Not connected" />}
+            />
+            <div className="mt-6 flex items-center justify-between rounded-lg border border-border bg-surface/40 p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <GithubIcon className="h-5 w-5 shrink-0 text-foreground" />
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">
+                    {githubConnected ? githubUsername : 'Not linked'}
+                  </p>
+                  <p className="mt-0.5 font-mono text-xs text-muted-foreground">
+                    {githubConnected ? 'scope: repo · read:user' : 'Connect to enable repo suggestions'}
+                  </p>
+                </div>
+              </div>
+              {githubConnected ? (
+                <Button variant="outline" size="sm" onClick={disconnectGithub} className="shrink-0">
+                  Disconnect
+                </Button>
+              ) : (
+                <Button asChild variant="outline" size="sm" className="shrink-0">
+                  <a href="/api/github/connect" className="gap-1.5">
+                    <Plus className="h-3.5 w-3.5" /> Connect
+                  </a>
+                </Button>
+              )}
+            </div>
           </Card>
         </TabsContent>
 
-        <TabsContent value="recipients" className="mt-6">
+        <TabsContent value="email" className="mt-6 space-y-6">
           <Card>
-            <h2 className="text-lg font-semibold">Email recipients</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Comma-separated email addresses per role.</p>
-
+            <CardHeader
+              title="Compose"
+              subtitle="Who receives your daily report and how your name appears."
+            />
             <div className="mt-6 space-y-4">
-              <Field label="Display name">
-                <Input
-                  value={settings.displayName}
-                  onChange={(e) => set('displayName', e.target.value)}
-                  placeholder={session?.user?.name || 'Your full name'}
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Used in email subject and signature. Defaults to your Google account name.
-                </p>
+              <Field label="Display name" hint="Used in email subject and as signature default. Defaults to your Google account name.">
+                <Input value={settings.displayName} onChange={(e) => set('displayName', e.target.value)} placeholder={session?.user?.name || 'Your full name'} />
               </Field>
               <Field label="To">
                 <Input value={settings.emailRecipients} onChange={(e) => set('emailRecipients', e.target.value)} placeholder="manager@company.com, team@company.com" />
               </Field>
-              <Field label="CC">
-                <Input value={settings.emailCc} onChange={(e) => set('emailCc', e.target.value)} placeholder="cc@company.com" />
-              </Field>
-              <Field label="BCC">
-                <Input value={settings.emailBcc} onChange={(e) => set('emailBcc', e.target.value)} placeholder="bcc@company.com" />
-              </Field>
-              <Field label="Weekly filter — fetch reports sent to">
-                <Input
-                  value={settings.weeklyFilterTo}
-                  onChange={(e) => set('weeklyFilterTo', e.target.value)}
-                  placeholder="manager@company.com"
-                />
-                <p className="text-[11px] text-muted-foreground mt-1">
-                  Weekly report scans Gmail for daily reports sent to this address.
-                </p>
-              </Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="CC">
+                  <Input value={settings.emailCc} onChange={(e) => set('emailCc', e.target.value)} placeholder="cc@company.com" />
+                </Field>
+                <Field label="BCC">
+                  <Input value={settings.emailBcc} onChange={(e) => set('emailBcc', e.target.value)} placeholder="bcc@company.com" />
+                </Field>
+              </div>
             </div>
+            <div className="mt-6 flex justify-end">{saveButton()}</div>
           </Card>
 
           <Card>
-            <h2 className="text-lg font-semibold">Email signature</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Shown at the bottom of every email. Leave fields empty to fall back to your Google account name and email.
-            </p>
+            <CardHeader
+              title="Signature"
+              subtitle="Shown at the bottom of every email. Leave fields empty for placeholder defaults."
+            />
             <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
               {SIGNATURE_FIELD_CONFIG.map(({ key, label, placeholder }) => (
                 <Field key={key} label={label}>
@@ -418,26 +425,37 @@ export default function SettingsPage() {
               <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Preview</p>
               <div dangerouslySetInnerHTML={{ __html: signaturePreviewHtml }} />
             </div>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={save} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-              </Button>
+            <div className="mt-4 flex justify-end">{saveButton()}</div>
+          </Card>
+
+          <Card>
+            <CardHeader
+              title="Weekly report scope"
+              subtitle="Gmail filter address used by the /weekly page to collect past daily reports."
+            />
+            <div className="mt-5">
+              <Field label="Fetch reports sent to" hint="Usually your manager's email — only emails to this address are scanned.">
+                <Input
+                  value={settings.weeklyFilterTo}
+                  onChange={(e) => set('weeklyFilterTo', e.target.value)}
+                  placeholder="manager@company.com"
+                />
+              </Field>
             </div>
+            <div className="mt-4 flex justify-end">{saveButton()}</div>
           </Card>
         </TabsContent>
 
-        <TabsContent value="ai" className="mt-6">
+        <TabsContent value="ai" className="mt-6 space-y-6">
           <Card>
-            <h2 className="text-lg font-semibold">AI provider</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Choose which AI provider generates descriptions. Leave keys blank to use server defaults.
-            </p>
+            <CardHeader
+              title="AI provider"
+              subtitle="Generates the description for each entry. Leave key/model blank to use server defaults."
+            />
             <div className="mt-5 space-y-5">
               <Field label="Provider">
                 <Select value={settings.aiProvider} onValueChange={(v) => set('aiProvider', v)}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="openrouter">OpenRouter</SelectItem>
                     <SelectItem value="gemini">Google Gemini</SelectItem>
@@ -447,18 +465,10 @@ export default function SettingsPage() {
 
               {settings.aiProvider === 'openrouter' && (
                 <>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">API key</Label>
-                      <a
-                        href="https://openrouter.ai/keys"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs text-accent hover:underline"
-                      >
-                        Get API key <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
+                  <Field
+                    label="API key"
+                    action={<ExternalLinkBadge href="https://openrouter.ai/keys" label="Get key" />}
+                  >
                     <Input
                       type="password"
                       value={settings.openrouterApiKey}
@@ -466,11 +476,11 @@ export default function SettingsPage() {
                       placeholder="sk-or-…"
                       autoComplete="off"
                     />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Model {loadingOrModels && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
-                    </Label>
+                  </Field>
+                  <Field
+                    label={`Model${loadingOrModels ? ' (loading…)' : ''}`}
+                    hint={settings.openrouterApiKey ? 'Pick one or leave blank for server default.' : 'Leave blank to use server default.'}
+                  >
                     <Combobox
                       items={[
                         { value: '', label: '— Server default —' },
@@ -485,25 +495,17 @@ export default function SettingsPage() {
                       searchPlaceholder="Search models…"
                       disabled={loadingOrModels && !settings.openrouterModel}
                     />
-                    <p className="text-xs text-muted-foreground">Leave blank to use server default.</p>
-                  </div>
+                  </Field>
                 </>
               )}
 
               {settings.aiProvider === 'gemini' && (
                 <>
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs uppercase tracking-wider text-muted-foreground">API key</Label>
-                      <a
-                        href="https://aistudio.google.com/apikey"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs text-accent hover:underline"
-                      >
-                        Get API key <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
+                  <Field
+                    label="API key"
+                    hint="Separate from your Google login."
+                    action={<ExternalLinkBadge href="https://aistudio.google.com/apikey" label="Get key" />}
+                  >
                     <Input
                       type="password"
                       value={settings.geminiApiKey}
@@ -511,12 +513,11 @@ export default function SettingsPage() {
                       placeholder="AIza…"
                       autoComplete="off"
                     />
-                    <p className="text-xs text-muted-foreground">Separate from your Google login.</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs uppercase tracking-wider text-muted-foreground">
-                      Model {loadingGeminiModels && <Loader2 className="inline h-3 w-3 animate-spin ml-1" />}
-                    </Label>
+                  </Field>
+                  <Field
+                    label={`Model${loadingGeminiModels ? ' (loading…)' : ''}`}
+                    hint={settings.geminiApiKey ? 'Models loaded from your key.' : 'Enter API key above to load model list.'}
+                  >
                     <Combobox
                       items={[
                         { value: '', label: '— Server default —' },
@@ -531,23 +532,16 @@ export default function SettingsPage() {
                       searchPlaceholder="Search models…"
                       disabled={loadingGeminiModels}
                     />
-                    <p className="text-xs text-muted-foreground">
-                      {settings.geminiApiKey ? 'Models loaded from your key.' : 'Enter API key above to load model list.'}
-                      {!settings.geminiApiKey && ' Leave blank to use server default.'}
-                    </p>
-                  </div>
+                  </Field>
                 </>
               )}
-
             </div>
-            <div className="mt-6 flex justify-end">
-              <Button onClick={save} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-              </Button>
-            </div>
+            <div className="mt-6 flex justify-end">{saveButton()}</div>
+          </Card>
 
-            <div className="mt-6 border-t border-border pt-6 space-y-3">
-              <p className="text-sm font-medium">Test model</p>
+          <Card>
+            <CardHeader title="Test model" subtitle="Send a prompt to verify your provider, key, and model work." />
+            <div className="mt-5 space-y-3">
               <div className="flex gap-2">
                 <Input
                   value={testPrompt}
@@ -556,13 +550,8 @@ export default function SettingsPage() {
                   placeholder="Say something…"
                   className="flex-1"
                 />
-                <Button
-                  variant="outline"
-                  onClick={testAi}
-                  disabled={testingAi || !testPrompt.trim()}
-                  className="shrink-0"
-                >
-                  {testingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Send'}
+                <Button variant="outline" onClick={testAi} disabled={testingAi || !testPrompt.trim()} className="shrink-0">
+                  {testingAi ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Run'}
                 </Button>
               </div>
               {testResponse && (
@@ -577,17 +566,17 @@ export default function SettingsPage() {
 
         <TabsContent value="style" className="mt-6 space-y-6">
           <Card>
-            <h2 className="text-lg font-semibold">Description length</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Default word count mode used when generating descriptions. Customize each target below.
-            </p>
+            <CardHeader
+              title="Description length"
+              subtitle="Default word target for generated descriptions. Customize each target below."
+            />
             <div className="mt-5 space-y-4">
-              <div className="flex gap-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {(['short', 'concise', 'detailed', 'none'] as const).map((mode) => (
                   <button
                     key={mode}
                     onClick={() => set('wordCountMode', mode)}
-                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                       settings.wordCountMode === mode
                         ? 'border-accent bg-accent/10 text-accent'
                         : 'border-border bg-surface/40 text-muted-foreground hover:border-accent/50'
@@ -602,66 +591,36 @@ export default function SettingsPage() {
                   </button>
                 ))}
               </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Short (words)</Label>
-                  <Input
-                    type="number"
-                    min={5}
-                    max={100}
-                    value={settings.wordCountShort}
-                    onChange={(e) => set('wordCountShort', parseInt(e.target.value) || 20)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Concise (words)</Label>
-                  <Input
-                    type="number"
-                    min={20}
-                    max={200}
-                    value={settings.wordCountConcise}
-                    onChange={(e) => set('wordCountConcise', parseInt(e.target.value) || 70)}
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs uppercase tracking-wider text-muted-foreground">Detailed (words)</Label>
-                  <Input
-                    type="number"
-                    min={50}
-                    max={400}
-                    value={settings.wordCountDetailed}
-                    onChange={(e) => set('wordCountDetailed', parseInt(e.target.value) || 110)}
-                  />
-                </div>
+              <div className="grid grid-cols-1 gap-3 rounded-lg border border-border bg-surface/30 p-3 sm:grid-cols-3">
+                <Field label="Short">
+                  <Input type="number" min={5} max={100} value={settings.wordCountShort} onChange={(e) => set('wordCountShort', parseInt(e.target.value) || 20)} />
+                </Field>
+                <Field label="Concise">
+                  <Input type="number" min={20} max={200} value={settings.wordCountConcise} onChange={(e) => set('wordCountConcise', parseInt(e.target.value) || 70)} />
+                </Field>
+                <Field label="Detailed">
+                  <Input type="number" min={50} max={400} value={settings.wordCountDetailed} onChange={(e) => set('wordCountDetailed', parseInt(e.target.value) || 110)} />
+                </Field>
               </div>
             </div>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={save} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
-              </Button>
-            </div>
+            <div className="mt-4 flex justify-end">{saveButton()}</div>
           </Card>
 
           <Card>
-            <h2 className="text-lg font-semibold">Your writing style</h2>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Paste an example description in your tone. AI matches its rhythm, technical density,
-              and sentence structure for every generated description.
-            </p>
+            <CardHeader
+              title="Writing style"
+              subtitle="Paste an example description in your tone. AI matches rhythm, technical density, and sentence structure."
+            />
             <div className="mt-5">
               <Textarea
                 value={settings.descriptionStyle}
                 onChange={(e) => set('descriptionStyle', e.target.value)}
-                rows={14}
+                rows={12}
                 placeholder="Paste a description you wrote that captures your style…"
                 className="resize-y"
               />
             </div>
-            <div className="mt-4 flex justify-end">
-              <Button onClick={save} disabled={saving}>
-                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save style'}
-              </Button>
-            </div>
+            <div className="mt-4 flex justify-end">{saveButton('Save style')}</div>
           </Card>
         </TabsContent>
       </Tabs>
@@ -673,22 +632,46 @@ function Card({ children }: { children: React.ReactNode }) {
   return <div className="rounded-xl border border-border bg-surface/40 p-6">{children}</div>
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function CardHeader({ title, subtitle, status }: { title: string; subtitle?: string; status?: React.ReactNode }) {
+  return (
+    <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div className="min-w-0 flex-1">
+        <h2 className="text-lg font-semibold">{title}</h2>
+        {subtitle && <p className="mt-1 text-sm text-muted-foreground">{subtitle}</p>}
+      </div>
+      {status}
+    </div>
+  )
+}
+
+function Field({ label, hint, action, children }: { label: string; hint?: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="space-y-2">
-      <Label className="text-xs uppercase tracking-wider text-muted-foreground">{label}</Label>
+      <div className="flex items-center justify-between">
+        <Label className="text-xs uppercase tracking-wider text-muted-foreground">{label}</Label>
+        {action}
+      </div>
       {children}
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
+  )
+}
+
+function ExternalLinkBadge({ href, label }: { href: string; label: string }) {
+  return (
+    <a href={href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-accent hover:underline">
+      {label} <ExternalLink className="h-3 w-3" />
+    </a>
   )
 }
 
 function ConnStatus({ ok, okLabel, offLabel }: { ok: boolean; okLabel: string; offLabel: string }) {
   return ok ? (
-    <span className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs text-accent">
+    <span className="flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs text-accent shrink-0">
       <CheckCircle2 className="h-3.5 w-3.5" /> {okLabel}
     </span>
   ) : (
-    <span className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted-foreground">
+    <span className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted-foreground shrink-0">
       <XCircle className="h-3.5 w-3.5" /> {offLabel}
     </span>
   )

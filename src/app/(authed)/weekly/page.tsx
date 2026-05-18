@@ -287,7 +287,12 @@ export default function WeeklyPage() {
       {/* Stage: concise grouped */}
       {stage === 'concise' && entries.length > 0 && (
         <>
-          <div className="mt-8 space-y-4">
+          <div className="mt-6 flex justify-end">
+            <Button variant="outline" size="sm" onClick={() => setStage('raw')}>
+              ← Back to raw rows
+            </Button>
+          </div>
+          <div className="mt-4 space-y-4">
             {entries.map((entry, idx) => (
               <div key={idx} className="overflow-hidden rounded-xl border border-border bg-surface/40">
                 <div className="flex items-center justify-between border-b border-border bg-surface/60 px-5 py-2.5">
