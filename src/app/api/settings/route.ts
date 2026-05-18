@@ -24,7 +24,9 @@ export async function POST(request: Request) {
     const body = await request.json()
     const allowed = [
       'odooUrl', 'odooUsername', 'odooPassword', 'odooDatabase',
-      'emailRecipients', 'emailCc', 'emailBcc', 'emailSignature',
+      'emailRecipients', 'emailCc', 'emailBcc',
+      'signatureName', 'signatureDesignation', 'signatureDepartment', 'signatureCompany',
+      'signatureEmail', 'signaturePhone', 'signatureWhatsapp',
       'descriptionStyle', 'weeklyFilterTo', 'displayName',
       'wordCountMode', 'wordCountShort', 'wordCountConcise', 'wordCountDetailed',
       'aiProvider', 'openrouterApiKey', 'openrouterModel', 'geminiApiKey', 'geminiModel',

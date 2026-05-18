@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { sendWeeklyWorkReport } from '@/lib/email'
 import { parseEmailList } from '@/lib/utils'
+import { extractSignatureFields } from '@/lib/signature-template'
 
 interface WeeklyEntry {
   projectName: string
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
       bcc,
       weekLabel,
       entries,
-      signature: settings.emailSignature || '',
+      signatureFields: extractSignatureFields(settings),
     })
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
@@ -12,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Combobox } from '@/components/ui/combobox'
+import { renderSignature, SIGNATURE_DEFAULTS } from '@/lib/signature-template'
 
 interface Settings {
   displayName: string
@@ -22,7 +23,13 @@ interface Settings {
   emailRecipients: string
   emailCc: string
   emailBcc: string
-  emailSignature: string
+  signatureName: string
+  signatureDesignation: string
+  signatureDepartment: string
+  signatureCompany: string
+  signatureEmail: string
+  signaturePhone: string
+  signatureWhatsapp: string
   descriptionStyle: string
   weeklyFilterTo: string
   wordCountMode: string
@@ -36,6 +43,16 @@ interface Settings {
   geminiModel: string
 }
 
+const SIGNATURE_FIELD_CONFIG: { key: keyof Settings; label: string; placeholder: string }[] = [
+  { key: 'signatureName', label: 'Name', placeholder: 'John Doe' },
+  { key: 'signatureDesignation', label: 'Designation', placeholder: SIGNATURE_DEFAULTS.designation },
+  { key: 'signatureDepartment', label: 'Department', placeholder: SIGNATURE_DEFAULTS.department },
+  { key: 'signatureCompany', label: 'Company', placeholder: SIGNATURE_DEFAULTS.company },
+  { key: 'signatureEmail', label: 'Email', placeholder: 'john@example.com' },
+  { key: 'signaturePhone', label: 'Mobile', placeholder: '+91 98765 43210' },
+  { key: 'signatureWhatsapp', label: 'WhatsApp', placeholder: '+91 98765 43210' },
+]
+
 const defaults: Settings = {
   displayName: '',
   odooUrl: '',
@@ -45,7 +62,13 @@ const defaults: Settings = {
   emailRecipients: '',
   emailCc: '',
   emailBcc: '',
-  emailSignature: '',
+  signatureName: '',
+  signatureDesignation: '',
+  signatureDepartment: '',
+  signatureCompany: '',
+  signatureEmail: '',
+  signaturePhone: '',
+  signatureWhatsapp: '',
   descriptionStyle: '',
   weeklyFilterTo: '',
   wordCountMode: 'concise',
@@ -96,6 +119,19 @@ export default function SettingsPage() {
 
   const set = (key: keyof Settings, value: string | number) =>
     setSettings((prev) => ({ ...prev, [key]: value }))
+
+  const signaturePreviewHtml = useMemo(() => renderSignature({
+    name: settings.signatureName || 'John Doe',
+    designation: settings.signatureDesignation,
+    department: settings.signatureDepartment,
+    company: settings.signatureCompany,
+    email: settings.signatureEmail || 'john@example.com',
+    phone: settings.signaturePhone,
+    whatsapp: settings.signatureWhatsapp,
+  }), [
+    settings.signatureName, settings.signatureDesignation, settings.signatureDepartment,
+    settings.signatureCompany, settings.signatureEmail, settings.signaturePhone, settings.signatureWhatsapp,
+  ])
 
   const save = async () => {
     setSaving(true)
@@ -361,16 +397,22 @@ export default function SettingsPage() {
           <Card>
             <h2 className="text-lg font-semibold">Email signature</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Paste your HTML signature (or plain text). Leave empty for default.
+              Shown at the bottom of every email. Leave fields empty to fall back to your Google account name and email.
             </p>
-            <div className="mt-5">
-              <Textarea
-                value={settings.emailSignature}
-                onChange={(e) => set('emailSignature', e.target.value)}
-                rows={10}
-                placeholder="<div>Your name<br>Your title<br>Company</div>"
-                className="font-mono text-xs resize-y"
-              />
+            <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2">
+              {SIGNATURE_FIELD_CONFIG.map(({ key, label, placeholder }) => (
+                <Field key={key} label={label}>
+                  <Input
+                    value={settings[key] as string}
+                    onChange={(e) => set(key, e.target.value)}
+                    placeholder={placeholder}
+                  />
+                </Field>
+              ))}
+            </div>
+            <div className="mt-4 rounded-lg border border-border bg-white px-4 py-2 overflow-x-auto">
+              <p className="mb-1 text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Preview</p>
+              <div dangerouslySetInnerHTML={{ __html: signaturePreviewHtml }} />
             </div>
             <div className="mt-4 flex justify-end">
               <Button onClick={save} disabled={saving}>

@@ -1,3 +1,17 @@
+import { renderSignature, escapeHtml, type SignatureFields } from '@/lib/signature-template'
+
+function buildSignatureHtml(signatureFields: Partial<SignatureFields> | undefined, userName: string, userEmail: string): string {
+  return renderSignature({
+    name: signatureFields?.name || userName,
+    email: signatureFields?.email || userEmail,
+    designation: signatureFields?.designation,
+    department: signatureFields?.department,
+    company: signatureFields?.company,
+    phone: signatureFields?.phone,
+    whatsapp: signatureFields?.whatsapp,
+  })
+}
+
 interface TimesheetEntry {
   projectName: string
   taskName: string
@@ -36,9 +50,9 @@ export function buildEmailHtml(params: {
   userEmail: string
   date: string
   entries: TimesheetEntry[]
-  signature?: string
+  signatureFields?: Partial<SignatureFields>
 }) {
-  const { userName, userEmail, date, entries, signature } = params
+  const { userName, userEmail, date, entries, signatureFields } = params
   const formattedDate = formatEmailDate(date)
 
   // Sort: Completed first, Ongoing last
@@ -55,10 +69,10 @@ export function buildEmailHtml(params: {
       return `
         <tr style="height:21px">
           <td style="${TD_FIRST}">${i + 1}</td>
-          <td style="${TD}">${e.projectName}</td>
-          <td style="${TD}">${e.taskName}</td>
-          <td style="${statusTd}">${e.status || ''}</td>
-          <td style="${TD}">${e.description}</td>
+          <td style="${TD}">${escapeHtml(e.projectName)}</td>
+          <td style="${TD}">${escapeHtml(e.taskName)}</td>
+          <td style="${statusTd}">${escapeHtml(e.status || '')}</td>
+          <td style="${TD}">${escapeHtml(e.description)}</td>
           <td style="${TD}">${e.hours}</td>
         </tr>`
     })
@@ -95,24 +109,7 @@ export function buildEmailHtml(params: {
       </tbody>
     </table>
   </div>
-  ${signature?.trim()
-    ? `<div dir="ltr"><br><br>${signature}</div>`
-    : `<div dir="ltr">
-    <p style="color:rgb(34,34,34);font-family:verdana,sans-serif;line-height:1.656;margin-top:0;margin-bottom:0">
-      <span style="font-size:10pt;font-family:Verdana;color:rgb(0,0,0)"><br><br><br>Thanks &amp; Regards</span>
-    </p>
-    <p style="color:rgb(34,34,34);font-family:verdana,sans-serif;line-height:1.656;margin-top:0;margin-bottom:0"><br></p>
-    <table style="border:none;border-collapse:collapse">
-      <tbody>
-        <tr>
-          <td style="border-bottom:0.75pt solid rgb(183,183,183);border-top:0.75pt solid rgb(183,183,183);vertical-align:bottom;padding:2pt">
-            <p style="line-height:1.656;margin-top:0;margin-bottom:0"><font color="#875a7b" face="Verdana"><b>${userName}</b></font></p>
-            <p style="line-height:1.656;margin-top:0;margin-bottom:0"><font face="Verdana" color="#666666">${userEmail}</font></p>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>`}
+  <div dir="ltr"><br><br>${buildSignatureHtml(signatureFields, userName, userEmail)}</div>
 </div>`
 }
 
@@ -143,13 +140,13 @@ export async function sendWorkReport(params: {
   bcc?: string[]
   date: string
   entries: TimesheetEntry[]
-  signature?: string
+  signatureFields?: Partial<SignatureFields>
 }) {
-  const { userEmail, userName, subjectName, recipients, cc = [], bcc = [], date, entries, signature } = params
+  const { userEmail, userName, subjectName, recipients, cc = [], bcc = [], date, entries, signatureFields } = params
   let { accessToken } = params
 
   const formattedDate = formatEmailDate(date)
-  const html = buildEmailHtml({ userName, userEmail, date, entries, signature })
+  const html = buildEmailHtml({ userName, userEmail, date, entries, signatureFields })
   const subject = `Daily Work Report_${formattedDate}_${(subjectName || userName).toUpperCase()}`
 
   const headers: string[] = [
@@ -197,11 +194,11 @@ interface WeeklyEntry {
 export function buildWeeklyEmailHtml(params: {
   userName: string
   userEmail: string
-  weekLabel: string // e.g. "W18 2026"
+  weekLabel: string
   entries: WeeklyEntry[]
-  signature?: string
+  signatureFields?: Partial<SignatureFields>
 }) {
-  const { userName, userEmail, weekLabel, entries, signature } = params
+  const { userName, userEmail, weekLabel, entries, signatureFields } = params
 
   const sorted = [...entries].sort((a, b) => {
     const sa = STATUS_ORDER[a.status || ''] ?? 99
@@ -216,10 +213,10 @@ export function buildWeeklyEmailHtml(params: {
       return `
         <tr style="height:21px">
           <td style="${TD_FIRST}">${i + 1}</td>
-          <td style="${TD}">${e.projectName}</td>
-          <td style="${TD}">${e.taskName}</td>
-          <td style="${statusTd}">${e.status || ''}</td>
-          <td style="${TD}">${e.description}</td>
+          <td style="${TD}">${escapeHtml(e.projectName)}</td>
+          <td style="${TD}">${escapeHtml(e.taskName)}</td>
+          <td style="${statusTd}">${escapeHtml(e.status || '')}</td>
+          <td style="${TD}">${escapeHtml(e.description)}</td>
         </tr>`
     })
     .join('')
@@ -250,24 +247,7 @@ export function buildWeeklyEmailHtml(params: {
       </tbody>
     </table>
   </div>
-  ${signature?.trim()
-    ? `<div dir="ltr"><br><br>${signature}</div>`
-    : `<div dir="ltr">
-    <p style="color:rgb(34,34,34);font-family:verdana,sans-serif;line-height:1.656;margin-top:0;margin-bottom:0">
-      <span style="font-size:10pt;font-family:Verdana;color:rgb(0,0,0)"><br><br><br>Thanks &amp; Regards</span>
-    </p>
-    <p style="color:rgb(34,34,34);font-family:verdana,sans-serif;line-height:1.656;margin-top:0;margin-bottom:0"><br></p>
-    <table style="border:none;border-collapse:collapse">
-      <tbody>
-        <tr>
-          <td style="border-bottom:0.75pt solid rgb(183,183,183);border-top:0.75pt solid rgb(183,183,183);vertical-align:bottom;padding:2pt">
-            <p style="line-height:1.656;margin-top:0;margin-bottom:0"><font color="#875a7b" face="Verdana"><b>${userName}</b></font></p>
-            <p style="line-height:1.656;margin-top:0;margin-bottom:0"><font face="Verdana" color="#666666">${userEmail}</font></p>
-          </td>
-        </tr>
-      </tbody>
-    </table>
-  </div>`}
+  <div dir="ltr"><br><br>${buildSignatureHtml(signatureFields, userName, userEmail)}</div>
 </div>`
 }
 
@@ -282,12 +262,12 @@ export async function sendWeeklyWorkReport(params: {
   bcc?: string[]
   weekLabel: string
   entries: WeeklyEntry[]
-  signature?: string
+  signatureFields?: Partial<SignatureFields>
 }) {
-  const { userEmail, userName, subjectName, recipients, cc = [], bcc = [], weekLabel, entries, signature } = params
+  const { userEmail, userName, subjectName, recipients, cc = [], bcc = [], weekLabel, entries, signatureFields } = params
   let { accessToken } = params
 
-  const html = buildWeeklyEmailHtml({ userName, userEmail, weekLabel, entries, signature })
+  const html = buildWeeklyEmailHtml({ userName, userEmail, weekLabel, entries, signatureFields })
   const subject = `Weekly Work Report_${weekLabel}_${(subjectName || userName).toUpperCase()}`
 
   const headers: string[] = [

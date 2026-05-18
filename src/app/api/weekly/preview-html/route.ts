@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildWeeklyEmailHtml } from '@/lib/email'
+import { extractSignatureFields } from '@/lib/signature-template'
 
 interface WeeklyEntry {
   projectName: string
@@ -25,7 +26,7 @@ export async function POST(request: Request) {
     userEmail: session.user.email || '',
     weekLabel,
     entries,
-    signature: settings?.emailSignature || '',
+    signatureFields: extractSignatureFields(settings),
   })
 
   return NextResponse.json({ html })

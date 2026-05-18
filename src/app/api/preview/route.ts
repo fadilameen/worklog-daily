@@ -4,6 +4,7 @@ import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/db'
 import { buildEmailHtml, formatEmailDate } from '@/lib/email'
 import { parseEmailList } from '@/lib/utils'
+import { extractSignatureFields } from '@/lib/signature-template'
 
 interface TimesheetEntry {
   projectId: number
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
     userEmail: session.user.email || '',
     date,
     entries,
-    signature: settings?.emailSignature || '',
+    signatureFields: extractSignatureFields(settings),
   })
 
   const subject = `Daily Work Report_${formatEmailDate(date)}_${subjectName.toUpperCase()}`

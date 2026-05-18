@@ -5,6 +5,7 @@ import { prisma } from '@/lib/db'
 import { createTimesheetEntry } from '@/lib/odoo'
 import { sendWorkReport } from '@/lib/email'
 import { parseEmailList } from '@/lib/utils'
+import { extractSignatureFields } from '@/lib/signature-template'
 
 interface TimesheetEntry {
   projectId: number
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
           bcc,
           date,
           entries,
-          signature: settings.emailSignature || '',
+          signatureFields: extractSignatureFields(settings),
         })
         results.emailSent = true
       } catch (e: unknown) {
